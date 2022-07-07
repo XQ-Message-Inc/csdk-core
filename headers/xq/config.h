@@ -8,6 +8,7 @@
 #ifndef config_h
 #define config_h
 
+
 #ifndef BEARER_TAG
 #define BEARER_TAG "Authorization:Bearer "
 #define BEARER_TAG_LEN 24
@@ -71,6 +72,13 @@ struct xq_config {
   char *access_token;
   char *exchange_token;
   char *dashboard_token;
+  char* monitor_key;
+  int monitor_team_id;
+  int gateway_sock;
+  int monitor_sock;
+  char* monitor_ip;
+  int monitor_interval;
+  long gateway_id;
 };
 
 /// The different types of supported metadata. This affects the data that will
