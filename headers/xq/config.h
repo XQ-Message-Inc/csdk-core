@@ -34,7 +34,13 @@
 #define MAX_ERROR_LENGTH 512
 #endif
 
+#ifndef PATH_SEPARATOR
+#define PATH_SEPARATOR '/'
+#endif
+
 #include <stdint.h>
+#include <unistd.h>
+
 
 /// The default structure returned from all xq server calls.
 struct xq_response {
@@ -174,5 +180,9 @@ char *reverse(char *buffer, int i, int j);
 
 /// Iterative function to implement itoa() function in C
 char *itoa(int value, char *buffer, int base);
+
+char* xq_get_file_name(const char* file_path, char* out_buffer);
+
+int xq_make_path(char* file_path, mode_t mode) ;
 
 #endif /* config_h */

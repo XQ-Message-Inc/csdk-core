@@ -20,5 +20,12 @@ _Bool xq_otp_encrypt(   uint8_t* data,
                         char* key,
                         struct xq_message_payload* result,
                         struct xq_error_info* error   );
+                        
+                        
+_Bool xq_otp_encrypt_file(
+                     const char* in_file_path, const char* out_file_path,
+                     char* token,
+                     char* key,
+                     struct xq_error_info* error  ) ;
 
 #endif /* otp_encrypt_h */

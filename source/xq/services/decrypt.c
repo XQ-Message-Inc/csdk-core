@@ -23,8 +23,8 @@
 _Bool xq_decrypt_with_token( struct xq_config* config, enum algorithm_type algorithm,  uint8_t* data,  size_t data_len, char* token, struct xq_message_payload* result, struct xq_error_info* error   ) {
     
     // 1st. fetch the key from the validation server using the provided token.
-    char keyBits[MAX_QUANTUM_SIZE] = {0};
-    struct xq_key key = { keyBits ,0};
+    char keyBits[MAX_QUANTUM_SIZE * 2] = {0};
+    struct xq_key key = { keyBits ,sizeof(keyBits)};
     _Bool success = xq_svc_get_key(config, token, &key, error);
     
     if ( !success ) {

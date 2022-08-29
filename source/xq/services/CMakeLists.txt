@@ -7,4 +7,6 @@ target_sources(xqc PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/crypto.c
 	${CMAKE_CURRENT_LIST_DIR}/decrypt.c
 	${CMAKE_CURRENT_LIST_DIR}/encrypt.c
+	${CMAKE_CURRENT_LIST_DIR}/decrypt_file.c
+	${CMAKE_CURRENT_LIST_DIR}/encrypt_file.c
 )

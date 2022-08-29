@@ -10,6 +10,8 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <errno.h>
+#include <sys/stat.h>
 
 #include <xq/config.h>
 #include <xq/connect.h>
@@ -96,6 +98,31 @@ _Bool set_exchange_token(struct xq_config *config, const char *token, int len) {
   }
 
   return 1;
+}
+
+char* xq_get_file_name(const char* file_path, char* out_buffer) {
+    char* last_separator = strrchr(file_path, PATH_SEPARATOR) + 1;
+    if (last_separator){
+        strcpy(out_buffer, last_separator);
+    }
+    else {
+        strcpy(out_buffer, file_path);
+    }
+    return out_buffer;
+}
+
+int xq_make_path(char* file_path, mode_t mode) {
+    for (char* p = strchr(file_path + 1, '/'); p; p = strchr(p + 1, '/')) {
+        *p = '\0';
+        if (mkdir(file_path, mode) == -1) {
+            if (errno != EEXIST) {
+                *p = '/';
+                return -1;
+            }
+        }
+        *p = '/';
+    }
+    return 0;
 }
 
 const char *xq_get_access_token(struct xq_config *config) {

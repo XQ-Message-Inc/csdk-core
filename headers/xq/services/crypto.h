@@ -59,6 +59,11 @@ struct xq_hex_quantum_key {
     uint32_t length;
 };
 
+struct xq_message_token;
+
+_Bool xq_get_file_token(struct xq_config *config, const char *in_file_path,
+                            struct xq_message_token *token,
+                            struct xq_error_info *error) ;
 
 /// Encrypts data using the specified algorithm.
 ///
@@ -80,6 +85,20 @@ _Bool xq_encrypt(   struct xq_config* config,
                     struct xq_quantum_pool* pool,
                     struct xq_message_payload* result,
                     struct xq_error_info* error   );
+          
+/// Encrypts a file and store the results in another using the specified algorithm.
+/// @param config The XQ configuration instance.
+/// @param algorithm The algorithm to use.
+/// @param in_file_path Full path of the input file.
+/// @param out_fp The output file where the encrypted data will be stored.
+/// @param token The token registered with the encryption key
+/// @param key The encryption key
+/// @param error An optional, user-provided block  to store details of any error that occurs.
+_Bool xq_encrypt_file(
+                     const char* in_file_path, const char* out_file_path,
+                      char* token,
+                      char* key,
+                     struct xq_error_info* error   );
 
 
 
@@ -103,7 +122,7 @@ _Bool xq_encrypt(   struct xq_config* config,
 /// @param pool  An optional quantum pool to use  for entropy.
 /// @param recipients A list of the recipients.
 /// @param hours_to_expiration The number of hours before this message should expire.
-/// @param delete_on_read Should this message be deleted after it is read?
+/// @param delete_on_read Should this key be deleted after it is read once?
 /// @param metadata Optional metadata related to the content being encrypted. File and Email metadata will be viewable as communications on the users dashboard.
 /// @param result The user-provided result instance. The data storage may be preallocated. Otherwise, it will be allocated automatically ( the user must manually clean up after usage).
 /// @param error An optional, user-provided block  to store details of any error that occurs.
@@ -119,6 +138,34 @@ _Bool xq_encrypt_and_store_token(
                                  struct xq_metadata* metadata,
                                  struct xq_message_payload* result,
                                  struct xq_error_info* error   );
+                                 
+          
+/// Encrypt the data from one file and store the result in another.
+/// @param config The XQ configuration instance.
+/// @param algorithm The algorithm to use.
+/// @param in_fp The file containing the data to be encrypted.
+/// @param out_fp The output file where the encrypted data will be stored.
+/// @param entropy_size The amount of quantum entropy to use for the key.
+/// @param pool  An optional quantum pool to use  for entropy.
+/// @param recipients A list of the recipients.
+/// @param hours_to_expiration The number of hours before this message should expire.
+/// @param delete_on_read Should the key be deleted after it is read once?
+/// @param metadata Optional metadata related to the content being encrypted. File and Email metadata will be viewable as communications on the users dashboard.
+/// @param error An optional, user-provided block  to store details of any error that occurs.
+_Bool xq_encrypt_file_and_store_token(
+                                 struct xq_config* config,
+                                 enum algorithm_type algorithm,
+                                 const char* in_file_path,
+                                 const char* out_file_path,
+                                 int entropy_bytes,
+                                 struct xq_quantum_pool* pool,
+                                 const char* recipients,
+                                 int hours_to_expiration,
+                                 _Bool delete_on_read,
+                                 struct xq_error_info* error     );
+                                 
+                                 
+enum algorithm_type xq_algorithm_from_token(const char* token);
 
 
 /// Decrypts a message using the secret key associated with the provided token.
@@ -158,6 +205,13 @@ _Bool xq_decrypt_with_key(  struct xq_config* config,
                             char* key,
                             struct xq_message_payload* result,
                             struct xq_error_info* error   );
+                            
+                            
+_Bool xq_decrypt_file(struct xq_config* config,
+                        const char* in_file_path,
+                        const char* out_file_dir,
+                        struct xq_message_payload* resulting_file_path,
+                        struct xq_error_info* error  );
 
 
 /// Expands the length of a key.
