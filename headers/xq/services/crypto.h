@@ -60,6 +60,7 @@ struct xq_hex_quantum_key {
 };
 
 struct xq_message_token;
+struct xq_file_stream;
 
 _Bool xq_get_file_token(struct xq_config *config, const char *in_file_path,
                             struct xq_message_token *token,
@@ -99,6 +100,18 @@ _Bool xq_encrypt_file(
                       char* token,
                       char* key,
                      struct xq_error_info* error   );
+                     
+_Bool xq_encrypt_file_start(struct xq_config *config,  const char *in_file_path, const char *out_file_path,
+                             enum algorithm_type algorithm,
+                            int entropy_bytes,
+                            struct xq_quantum_pool *pool, const char *recipients,
+                            int hours_to_expiration, _Bool delete_on_read,
+                            struct xq_file_stream *stream_info,
+                            struct xq_error_info *error);
+
+_Bool xq_encrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data, int data_length);
+
+_Bool xq_encrypt_file_end(struct xq_file_stream* stream_info );
 
 
 
@@ -212,6 +225,14 @@ _Bool xq_decrypt_file(struct xq_config* config,
                         const char* out_file_dir,
                         struct xq_message_payload* resulting_file_path,
                         struct xq_error_info* error  );
+                        
+_Bool xq_decrypt_file_start(struct xq_config* config, const char* in_file_path,
+                      struct xq_file_stream* stream_info,
+                     struct xq_error_info* error   );
+
+int xq_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data, int data_length);
+
+_Bool xq_decrypt_file_end(struct xq_file_stream* stream_info );
 
 
 /// Expands the length of a key.

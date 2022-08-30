@@ -62,6 +62,21 @@ struct xq_error_info {
   long responseCode;
 };
 
+
+
+struct xq_file_stream {
+    FILE* fp;
+    char* key;
+    int key_length;
+    long data_index;
+    long data_size;
+    long header_index;
+    char filename[512];
+    int native_handle;
+};
+
+
+
 /*! This object contains all the information necessary to communicate properly
  * with an XQ instance.
  */
