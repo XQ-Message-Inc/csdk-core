@@ -268,8 +268,6 @@ _Bool xq_otp_encrypt_file_start(const char* out_file_path,
     stream_info->data_index = 0;
     stream_info->key = strdup(key + key_offset);
     stream_info->key_length = key_length;
-
-
     return 1;
 
 }
@@ -289,7 +287,7 @@ _Bool xq_otp_encrypt_file_step(struct xq_file_stream *stream_info, uint8_t *data
     int original_index = stream_info->data_index;
     
     
-    do {
+     do {
         int to_write =  (data_length < buf_size) ? data_length : buf_size;
         if (to_write == 0) break;
         
@@ -299,16 +297,18 @@ _Bool xq_otp_encrypt_file_step(struct xq_file_stream *stream_info, uint8_t *data
         }
         
         if (stream_info->native_handle) {
-            pwrite(stream_info->native_handle, out_buffer, to_write, original_index);
+            pwrite(stream_info->native_handle, out_buffer, to_write, stream_info->header_index + original_index + written);
         }
         else if (stream_info->fp){
             fwrite(out_buffer,1,to_write, stream_info->fp);
         }
         written += to_write;
         has_more = (written < data_length);
+    
     } while (has_more);
     
-    return 0;
+    return (written > 0);
+
 }
 
 
