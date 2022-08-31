@@ -15,6 +15,7 @@
 #include <xq/services/crypto.h>
 #include <xq/algorithms/otp/otp_encrypt.h>
 #include <unistd.h>
+#include <errno.h>
 
 _Bool xq_otp_encrypt(
                      uint8_t* data, size_t data_len,
@@ -273,10 +274,14 @@ _Bool xq_otp_encrypt_file_start(const char* out_file_path,
 }
 
 
-_Bool xq_otp_encrypt_file_step(struct xq_file_stream *stream_info, uint8_t *data,
-                           int data_length){
+int xq_otp_encrypt_file_step(struct xq_file_stream *stream_info, uint8_t *data,
+                           int data_length, struct xq_error_info *error){
                         
     if (!stream_info || (!stream_info->fp && stream_info->native_handle == 0 ) || !stream_info->key || stream_info->key_length == 0 || data_length == 0) {
+        if (error){
+            error->responseCode = -1;
+            sprintf(error->content, "One or more invalid parameters were provided to otp step function");
+        }
         return 0;
     }
     const int buf_size = 1024;
@@ -296,23 +301,34 @@ _Bool xq_otp_encrypt_file_step(struct xq_file_stream *stream_info, uint8_t *data
             out_buffer[count_index] = data[count_index + written] ^ stream_info->key[key_index];
         }
         
+        int actual_write = 0;
         if (stream_info->native_handle) {
-            pwrite(stream_info->native_handle, out_buffer, to_write, stream_info->header_index + original_index + written);
+            actual_write = pwrite(stream_info->native_handle, out_buffer, to_write, stream_info->header_index + original_index + written);
+        
         }
         else if (stream_info->fp){
-            fwrite(out_buffer,1,to_write, stream_info->fp);
+            actual_write = fwrite(out_buffer,1,to_write, stream_info->fp);
         }
+        
+        if (actual_write<to_write) {
+            if (error) {
+                error->responseCode = -1;
+                sprintf(error->content,"An error occured while writing encrypted content: %s", strerror(errno));
+                return 0;
+            }
+        }
+            
         written += to_write;
         has_more = (written < data_length);
     
     } while (has_more);
     
-    return (written > 0);
+    return written;
 
 }
 
 
-_Bool xq_otp_encrypt_file_end(struct xq_file_stream *stream_info) {
+_Bool xq_otp_encrypt_file_end(struct xq_file_stream *stream_info,struct xq_error_info *error) {
     if (stream_info) {
         fclose(stream_info->fp);
     }

@@ -109,9 +109,9 @@ _Bool xq_encrypt_file_start(struct xq_config *config,  const char *in_file_path,
                             struct xq_file_stream *stream_info,
                             struct xq_error_info *error);
 
-_Bool xq_encrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data, int data_length);
+int xq_encrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data, int data_length,struct xq_error_info *error);
 
-_Bool xq_encrypt_file_end(struct xq_file_stream* stream_info );
+_Bool xq_encrypt_file_end(struct xq_file_stream* stream_info,struct xq_error_info *error );
 
 
 

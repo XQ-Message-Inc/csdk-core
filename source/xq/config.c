@@ -102,15 +102,19 @@ _Bool set_exchange_token(struct xq_config *config, const char *token, int len) {
 
 char* xq_get_file_name(const char* file_path, char* out_buffer) {
     char* last_separator = strrchr(file_path, PATH_SEPARATOR);
-    if (last_separator){
+    if (last_separator)
+    {
         last_separator += 1;
         if (last_separator){
-        strcpy(out_buffer, last_separator);
+            strcpy(out_buffer, last_separator);
+        }
+        else {
+            strcpy(out_buffer, file_path);
+        }
+        return out_buffer;
     }
     else {
-        strcpy(out_buffer, file_path);
-    }
-    return out_buffer;
+         return strcpy(out_buffer, file_path);
     }
     //char* last_separator = strrchr(file_path, PATH_SEPARATOR) + 1;
     
