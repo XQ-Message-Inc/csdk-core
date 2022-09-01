@@ -108,3 +108,33 @@ int xq_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data, int
 _Bool xq_decrypt_file_end(struct xq_file_stream* stream_info ){
     return xq_otp_decrypt_file_end(stream_info);
 }
+
+int xq_get_real_file_size( struct xq_config* config, const char* in_file_path,  struct xq_error_info *error ) {
+    
+    FILE *in_fp = fopen(in_file_path, "rb");
+    if (in_fp == 0) {
+        if (error) {
+            sprintf(error->content, "Failed to open file: %s", in_file_path);
+            error->responseCode = -1;
+        }
+        return -1;
+    }
+
+    // 2. Read the length of the file token.
+    uint32_t token_length = 0, name_length = 0;
+    fread(&token_length, sizeof(uint32_t), 1, in_fp);
+    if (token_length == -1) {
+        fclose(in_fp);
+        return -1;
+    }
+    fseek(in_fp, token_length, SEEK_CUR);
+    
+    // Read the length of the filename.
+    fread(&name_length, sizeof(uint32_t), 1, in_fp);
+    
+    int header_len = ( sizeof(uint32_t) * 2) + name_length + token_length;
+    fseek(in_fp, 0, SEEK_END);
+    int sz = ftell(in_fp) - header_len;
+    fclose(in_fp);
+    return sz;
+}

@@ -280,7 +280,26 @@ int xq_otp_encrypt_file_step(struct xq_file_stream *stream_info, uint8_t *data,
     if (!stream_info || (!stream_info->fp && stream_info->native_handle == 0 ) || !stream_info->key || stream_info->key_length == 0 || data_length == 0) {
         if (error){
             error->responseCode = -1;
-            sprintf(error->content, "One or more invalid parameters were provided to otp step function");
+            if (!stream_info) {
+                sprintf(error->content, "[xq_otp_encrypt_file_step] Stream info is null");
+            }
+            else if (!stream_info->fp && stream_info->native_handle == 0) {
+                 sprintf(error->content, "[xq_otp_encrypt_file_step] Stream info file pointer and native handle are both null");
+            }
+            else if (!stream_info->key ) {
+                 sprintf(error->content, "[xq_otp_encrypt_file_step] stream info key is null");
+            }
+            else if (stream_info->key_length == 0) {
+                 sprintf(error->content, "[xq_otp_encrypt_file_step] stream info key length is zero");
+            }
+            else if (data_length == 0) {
+                 sprintf(error->content, "[xq_otp_encrypt_file_step] Data length is zero");
+            }
+            else {
+                sprintf(error->content, "[xq_otp_encrypt_file_step] One or more validation checks failed.");
+            }
+            
+            
         }
         return 0;
     }

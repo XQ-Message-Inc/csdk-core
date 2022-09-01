@@ -270,7 +270,6 @@ int xq_otp_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data,
 
     
     //////////////////
-    ///
      if (!stream_info || (!stream_info->fp && !stream_info->native_handle) || !stream_info->key || stream_info->key_length == 0 || data_length == 0) {
         return -1;
     }
@@ -278,6 +277,7 @@ int xq_otp_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data,
     int count_index = 0;
     int written = 0;
     long data_index = 0;
+    // memset(data, 0, data_length);
     
     int bytes_read;
     

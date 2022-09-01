@@ -234,6 +234,8 @@ int xq_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data, int
 
 _Bool xq_decrypt_file_end(struct xq_file_stream* stream_info );
 
+int xq_get_real_file_size( struct xq_config* config, const char* in_file_path,  struct xq_error_info *error  );
+
 
 /// Expands the length of a key.
 ///
