@@ -332,7 +332,7 @@ int testFiles(int argc, const char * argv[]) {
 
 
 
-int main(int argc, const char * argv[]) {
+int current_main(int argc, const char * argv[]) {
         
     if ( argc < 3 ) {
         fprintf(stderr, "Usage: test CONFIG_FILE_INI USER_ALIAS\n");
@@ -369,10 +369,17 @@ int main(int argc, const char * argv[]) {
     // Test file encryption
     struct xq_message_payload result = {0,0};
     
+    /*
     const char source_file[] = "/Users/ikechie/Downloads/test-long-report.pdf";
     const char output_file[] = "/Users/ikechie/Downloads/test-long-report-encrypted.pdf.xqf";
     const char decrypted_file[] = "/Users/ikechie/Downloads/test-long-report-stream-decrypted.pdf";
     const char clone_file[] = "/Users/ikechie/Downloads/test-long-report-clone-decrypted.pdf";
+    */
+    
+    const char source_file[] = "/Users/ikechie/Downloads/sumpi.txt";
+    const char output_file[] = "/Users/ikechie/Downloads/sumpi-encrypted.txt.xqf";
+    const char decrypted_file[] = "/Users/ikechie/Downloads/sumpi-decrypted.txt";
+    const char clone_file[] = "/Users/ikechie/Downloads/sumpi-clone.txt";
     
     FILE* source_fp = fopen(source_file, "rb");
     fseek(source_fp,0, SEEK_END);
@@ -407,8 +414,8 @@ int main(int argc, const char * argv[]) {
     long data_offset = 0;
     while (data_offset < source_size) {
         int chunk = source_size > 4096 ? 4096 : source_size;
-        xq_encrypt_file_step(&info, source_data + data_offset, chunk, &err);
-        data_offset += chunk;
+        int read = xq_encrypt_file_step(&info, source_data + data_offset, chunk, &err);
+        data_offset += read;
     }
     
     //info.native_handle = 0;
@@ -475,3 +482,86 @@ int main(int argc, const char * argv[]) {
     
 }
 
+
+
+int main(int argc, const char * argv[]) {
+
+    if ( argc < 3 ) {
+        fprintf(stderr, "Usage: test CONFIG_FILE_INI USER_ALIAS\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    // 1. SDK Initialization
+    const char *config_file = argc > 1 ? argv[1] : "xq.ini";
+    struct xq_config cfg = xq_init( config_file );
+    if (!xq_is_valid_config(&cfg) ) {
+        // If something went wrong, call this to clean up
+        // any memory that was possibly allocated.
+        xq_destroy_config(&cfg);
+        exit(EXIT_FAILURE);
+    }
+    
+    // 2. Create Quantum Pool
+    struct xq_error_info err = {0};
+    
+    // 3. Authenticate a user.
+    const char* email_address = argv[2];
+    
+    
+    // If a real email address was set.
+    if  (!xq_svc_authorize_alias( &cfg, email_address, &err )) {
+        fprintf(stderr, "[xq_svc_authorize_alias] %li : %s\n", err.responseCode, err.content );
+        xq_destroy_config(&cfg);
+        exit(EXIT_FAILURE);
+    }
+    
+
+    if  (!xq_svc_authorize_trusted(
+        &cfg,
+        cfg.monitor_team_id,
+        cfg.monitor_key,
+        "Nero", &err )) {
+        fprintf(stderr, "[xq_svc_authorize_trusted] %li : %s\n", err.responseCode, err.content );
+        return 0;
+    }
+
+    
+    printf( "Trusted Account authorized.\n");
+    
+    const char source_file[] = "/Users/ikechie/Downloads/delta.txt.xqf";
+    const char clone_file[] = "/Users/ikechie/Downloads/delta-decrypted.txt";
+    struct xq_file_stream info;
+    
+    int actual_file_size = xq_get_real_file_size(&cfg, source_file, &err);
+    if (actual_file_size > 0) {
+        fprintf(stdout, "Actual file size is : %i\n", actual_file_size);
+    }
+    
+     // Test streaming reads
+    memset(&info, 0, sizeof(info));
+    if (!xq_decrypt_file_start(&cfg, source_file, &info, &err)){
+        fprintf(stderr, "[xq_decrypt_file_start] %li : %s\n", err.responseCode, err.content );
+        xq_destroy_config(&cfg);
+        exit(EXIT_FAILURE);
+    }
+
+    FILE* clone_fp = fopen(clone_file, "wb");
+    FILE* old_fp = info.fp;
+    info.native_handle = fileno(info.fp);
+    info.fp = 0;
+    
+    uint8_t chunk_content[1024] = {0};
+    int data_offset = 0;
+    
+     int bytes_read =xq_decrypt_file_step(&info, chunk_content, 1024);
+     
+     if (bytes_read > 0) {
+         do {
+            fwrite(chunk_content, 1, bytes_read, clone_fp);
+            bytes_read =xq_decrypt_file_step(&info, chunk_content, 1024);
+         } while (bytes_read > 0);
+     }
+     info.fp = old_fp;
+     xq_decrypt_file_end(&info);
+     fclose(clone_fp);
+}

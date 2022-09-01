@@ -12,7 +12,13 @@
 #ifndef HTTPSTATUSCODES_C_H_
 #define HTTPSTATUSCODES_C_H_
 
-
+#ifdef __APPLE__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused"
+#else
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+#endif
 /*! Enum for the HTTP status codes.
  */
 enum HttpStatus_Code
@@ -121,13 +127,7 @@ static char HttpStatus_isError(int code)         { return (code >= 400); }
  * phrase for the given \p code is known.
  */
  
-#ifdef __APPLE__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused"
-#else
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused"
-#endif
+
 static const char* httpStatus(int code)
 {
     switch (code)
@@ -207,7 +207,6 @@ static const char* httpStatus(int code)
             
         default: return 0;
     }
-    
 }
 #ifdef __APPLE__
 #pragma clang diagnostic pop
