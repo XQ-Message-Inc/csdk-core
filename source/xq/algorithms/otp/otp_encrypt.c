@@ -7,6 +7,7 @@
 
 
 #include <stdio.h>
+#include <stdint.h>
 #include <memory.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -16,6 +17,7 @@
 #include <xq/algorithms/otp/otp_encrypt.h>
 #include <unistd.h>
 #include <errno.h>
+
 
 _Bool xq_otp_encrypt(
                      uint8_t* data, size_t data_len,
@@ -303,8 +305,8 @@ int xq_otp_encrypt_file_step(struct xq_file_stream *stream_info, uint8_t *data,
         }
         return 0;
     }
-    const int buf_size = 1024;
-    uint8_t out_buffer[buf_size] = {0};
+   
+    uint8_t out_buffer[1024] = {0};
     _Bool has_more = 1;
     int count_index = 0;
     int written = 0;
@@ -312,7 +314,7 @@ int xq_otp_encrypt_file_step(struct xq_file_stream *stream_info, uint8_t *data,
     
     
      do {
-        int to_write =  (data_length < buf_size) ? data_length : buf_size;
+        int to_write =  (data_length < sizeof(out_buffer)) ? data_length : sizeof(out_buffer);
         if (to_write == 0) break;
         
         for (count_index = 0; count_index < to_write; ++stream_info->data_index, ++count_index) {
@@ -353,4 +355,5 @@ _Bool xq_otp_encrypt_file_end(struct xq_file_stream *stream_info,struct xq_error
     }
     return 1;
 }
+
 
