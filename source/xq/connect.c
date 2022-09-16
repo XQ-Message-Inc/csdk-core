@@ -309,7 +309,8 @@ struct xq_response xq_call(
         //fprintf(stderr, "Connection failed with error code: %i", code );
         response.size = 50;
         response.content = calloc(response.size, 1);
-        snprintf((char*)response.content, 100, "Connection failed with error code: %i", code);
+        
+        snprintf((char*)response.content, response.size, "Connection failed with error code: %i", code);
         
     }
     

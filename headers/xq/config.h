@@ -41,6 +41,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <stdio.h>
 
 
 /// The default structure returned from all xq server calls.
