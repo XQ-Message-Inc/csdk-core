@@ -79,6 +79,25 @@ _Bool xq_set_dashboard_token(struct xq_config *config, const char *token) {
   return 1;
 }
 
+_Bool xq_set_trusted_address(struct xq_config *config, const char *addr) {
+
+  if (!config)
+    return 0;
+
+  if (config->trusted_address) {
+    free(config->trusted_address);
+    config->trusted_address = 0;
+  }
+
+  if (addr) {
+    config->trusted_address = calloc(strlen(addr) + strlen(TRUSTED_TAG) + 1, 1);
+    xq_strcat(xq_strcat(config->trusted_address, TRUSTED_TAG, 0), (char *)addr,
+              0);
+  }
+
+  return 1;
+}
+
 _Bool set_exchange_token(struct xq_config *config, const char *token, int len) {
 
   if (!config)
@@ -235,6 +254,8 @@ void xq_destroy_config(struct xq_config *config) {
     free(config->monitor_key);
   if (config->monitor_ip)
     free(config->monitor_ip);
+  if (config->trusted_address)
+    free(config->trusted_address);
   memset(config, 0, sizeof(struct xq_config));
   // curl_global_cleanup();
 }

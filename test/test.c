@@ -520,7 +520,7 @@ int main(int argc, const char * argv[]) {
         &cfg,
         cfg.monitor_team_id,
         cfg.monitor_key,
-        "Nero", &err )) {
+        "Nero", 1, &err )) {
         fprintf(stderr, "[xq_svc_authorize_trusted] %li : %s\n", err.responseCode, err.content );
         return 0;
     }

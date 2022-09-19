@@ -18,6 +18,10 @@
 #define APIKEY_TAG "Api-Key: "
 #endif
 
+#ifndef TRUSTED_TAG
+#define TRUSTED_TAG "Trusted-Address: "
+#endif
+
 #ifndef STATUS_BUFFER_SIZE
 #define STATUS_BUFFER_SIZE 512
 #endif
@@ -102,6 +106,7 @@ struct xq_config {
   char* monitor_ip;
   int monitor_interval;
   long gateway_id;
+  char* trusted_address;
 };
 
 /// The different types of supported metadata. This affects the data that will
@@ -179,6 +184,11 @@ const char *xq_get_access_token(struct xq_config *config);
 /// @param token The exchange token.
 /// @param len The length of the exchange token.
 _Bool set_exchange_token(struct xq_config *config, const char *token, int len);
+
+/// Set the trusted address  for the provided configuration object.
+/// @param config The XQ configuration object.
+/// @param addr The trusted IP address to forward.
+_Bool xq_set_trusted_address(struct xq_config *config, const char *addr);
 
 /// Returns a url-encoded version of string. The returned string must be freed
 /// by the user when no longer needed.

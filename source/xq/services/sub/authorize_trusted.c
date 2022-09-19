@@ -17,6 +17,7 @@ _Bool xq_svc_authorize_trusted(
                                int team_id,
                                const char* security_key,
                                const char* device_name,
+                               _Bool is_roaming,
                                struct xq_error_info* error ) {
  
     if ( config == 0 ){
@@ -57,10 +58,11 @@ _Bool xq_svc_authorize_trusted(
     itoa(team_id, tail, 10);
 
     // Next we need to calculate how much space we need for this request.
-    char buf[60] = {0};
+    char buf[80] = {0};
     struct jWriteControl jwc;
-    jwOpen(&jwc, buf, 60, JW_OBJECT);
+    jwOpen(&jwc, buf, sizeof(buf), JW_OBJECT);
     jwObj_string(&jwc, "device", (char*) device_name );
+    jwObj_bool(&jwc, "roaming", is_roaming);
     jwClose(&jwc);
     
 

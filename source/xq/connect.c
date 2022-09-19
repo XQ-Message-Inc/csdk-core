@@ -255,6 +255,14 @@ struct xq_response xq_call(
             }
         }
     }
+    
+    if (config->trusted_address){
+        headers = curl_slist_append(headers, config->trusted_address );
+        if (headers == NULL) {
+            fprintf(stderr, "Failed to assign trusted address.");
+            return response;
+        }
+    }
 
     /* set our set of headers */
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
