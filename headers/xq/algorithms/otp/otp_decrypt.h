@@ -31,7 +31,7 @@ _Bool xq_otp_decrypt_file_start(char* key,const char* in_file_path,
                       struct xq_file_stream* stream_info,
                      struct xq_error_info* error   );
 
-int xq_otp_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data, int data_length);
+size_t xq_otp_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data, size_t data_length);
 
 _Bool xq_otp_decrypt_file_end(struct xq_file_stream* stream_info );
 

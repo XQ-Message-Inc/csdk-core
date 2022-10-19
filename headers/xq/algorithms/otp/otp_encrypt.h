@@ -8,6 +8,10 @@
 #ifndef otp_encrypt_h
 #define otp_encrypt_h
 
+#ifndef STREAM_CHUNK_SIZE
+#define STREAM_CHUNK_SIZE 8192
+#endif
+
 /// Encrypts the provided data using the OTP algorithm (XOR).
 ///
 /// @param data The data to encrypt.
@@ -34,8 +38,8 @@ _Bool xq_otp_encrypt_file_start(const char* out_file_path,
                       struct xq_file_stream* stream_info,
                      struct xq_error_info* error   );
                      
-int xq_otp_encrypt_file_step(struct xq_file_stream *stream_info, uint8_t *data,
-                           int data_length,struct xq_error_info *error);
+size_t xq_otp_encrypt_file_step(struct xq_file_stream *stream_info, uint8_t *data,
+                           size_t data_length,struct xq_error_info *error);
                      
 _Bool xq_otp_encrypt_file_end(struct xq_file_stream *stream_info, struct xq_error_info *error);
 

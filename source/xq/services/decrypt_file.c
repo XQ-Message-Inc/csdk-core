@@ -101,7 +101,7 @@ _Bool xq_decrypt_file_start(struct xq_config* config, const char* in_file_path,
     return 0;
 }
 
-int xq_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data, int data_length){
+size_t xq_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data, size_t data_length){
     return xq_otp_decrypt_file_step(stream_info, data, data_length);
 }
 
@@ -109,7 +109,7 @@ _Bool xq_decrypt_file_end(struct xq_file_stream* stream_info ){
     return xq_otp_decrypt_file_end(stream_info);
 }
 
-int xq_get_real_file_size( struct xq_config* config, const char* in_file_path,  struct xq_error_info *error ) {
+long xq_get_real_file_size( struct xq_config* config, const char* in_file_path,  struct xq_error_info *error ) {
     
     FILE *in_fp = fopen(in_file_path, "rb");
     if (in_fp == 0) {
@@ -132,9 +132,9 @@ int xq_get_real_file_size( struct xq_config* config, const char* in_file_path,  
     // Read the length of the filename.
     fread(&name_length, sizeof(uint32_t), 1, in_fp);
     
-    int header_len = ( sizeof(uint32_t) * 2) + name_length + token_length;
+    long header_len = ( sizeof(uint32_t) * 2) + name_length + token_length;
     fseek(in_fp, 0, SEEK_END);
-    int sz = ftell(in_fp) - header_len;
+    long sz = ftell(in_fp) - header_len;
     fclose(in_fp);
     return sz;
 }

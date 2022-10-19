@@ -265,8 +265,7 @@ _Bool xq_otp_decrypt_file_start(
                      
 }
 
-int xq_otp_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data, int data_length){
-
+size_t xq_otp_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data, size_t data_length){
 
     
     //////////////////
@@ -276,10 +275,9 @@ int xq_otp_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data,
 
     int count_index = 0;
     int written = 0;
-    long data_index = 0;
-    // memset(data, 0, data_length);
-    
-    int bytes_read;
+    size_t data_index = 0;
+
+    size_t bytes_read;
     
     if (stream_info->fp){
         fseek(stream_info->fp, stream_info->header_index + stream_info->data_index, SEEK_SET);
@@ -293,17 +291,12 @@ int xq_otp_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data,
         return -1;
     }
     
-    // stream_info->data_index += bytes_read;
-    
-    //fprintf(stdout, "Current File position: %li\n", stream_info->data_index);
-    
-    // printf("reading data at position: %i", stream_info->data_index);
-    
+
     if (bytes_read == 0) {
         return 0;
     }
     
-    int si = stream_info->data_index;
+    size_t si = stream_info->data_index;
     
      for (count_index = 0; count_index < bytes_read; ++si, ++count_index) {
         int key_index =  (si % stream_info->key_length);

@@ -109,7 +109,7 @@ _Bool xq_encrypt_file_start(struct xq_config *config,  const char *in_file_path,
                             struct xq_file_stream *stream_info,
                             struct xq_error_info *error);
 
-int xq_encrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data, int data_length,struct xq_error_info *error);
+size_t xq_encrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data, size_t data_length,struct xq_error_info *error);
 
 _Bool xq_encrypt_file_end(struct xq_file_stream* stream_info,struct xq_error_info *error );
 
@@ -230,11 +230,11 @@ _Bool xq_decrypt_file_start(struct xq_config* config, const char* in_file_path,
                       struct xq_file_stream* stream_info,
                      struct xq_error_info* error   );
 
-int xq_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data, int data_length);
+size_t xq_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data, size_t data_length);
 
 _Bool xq_decrypt_file_end(struct xq_file_stream* stream_info );
 
-int xq_get_real_file_size( struct xq_config* config, const char* in_file_path,  struct xq_error_info *error  );
+long xq_get_real_file_size( struct xq_config* config, const char* in_file_path,  struct xq_error_info *error  );
 
 
 /// Expands the length of a key.
