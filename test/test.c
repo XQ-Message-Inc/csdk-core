@@ -48,6 +48,9 @@ _Bool testDataEncryption(struct xq_config *cfg, const char *recipients,
   struct xq_error_info err = {0};
   const char *meta_content = "{\"subject\":\"My C SDK Test Message\"}";
   struct xq_metadata meta = xq_use_metadata(Metadata_Email, meta_content);
+  
+  struct timeval begin, end;
+  gettimeofday(&begin, 0);
 
   if (!xq_encrypt_and_store_token(
           cfg,                // XQ Configuration object
@@ -65,6 +68,14 @@ _Bool testDataEncryption(struct xq_config *cfg, const char *recipients,
     return 0;
   }
 
+  // Stop measuring time and calculate the elapsed time
+  gettimeofday(&end, 0);
+  long seconds = end.tv_sec - begin.tv_sec;
+  long microseconds = end.tv_usec - begin.tv_usec;
+  double elapsed = seconds + microseconds * 1e-6;
+  printf("Encryption done. Time measured: %.3f seconds.\n\n", elapsed);
+  
+  
   struct xq_message_payload encoded = {0, 0};
   xq_base64_payload(&result, &encoded);
   // Display the encrypted message.
@@ -76,6 +87,8 @@ _Bool testDataEncryption(struct xq_config *cfg, const char *recipients,
   // The encrypted message should be exactly the same as
   // the one originally generated.
   struct xq_message_payload decrypted = {0, 0};
+  
+  gettimeofday(&begin, 0);
 
   if (!xq_decrypt_with_token(
           cfg, Algorithm_Autodetect,
@@ -89,6 +102,13 @@ _Bool testDataEncryption(struct xq_config *cfg, const char *recipients,
     return 0;
   }
 
+    // Stop measuring time and calculate the elapsed time
+  gettimeofday(&end, 0);
+  seconds = end.tv_sec - begin.tv_sec;
+  microseconds = end.tv_usec - begin.tv_usec;
+  elapsed = seconds + microseconds * 1e-6;
+  printf("Decryption done. Time measured: %.3f seconds.\n\n", elapsed);
+  
   // Success. The message has been successfully encrypted.
   printf("-- Decrypted:%s\n", decrypted.data);
 
@@ -149,6 +169,18 @@ int testFileEncryption(int argc, const char *argv[]) {
 
   // 3. Authenticate a user.
   const char *email_address = argv[2];
+  
+  // Test a trusted destination:
+    // To test this block, enter a valid secure key for a trusted domain, along with the workspace ID.
+    /*
+    const char* secure_key = "YOUR_TRUSTED_RANGE_SECURE_KEY";
+    if  (!xq_svc_authorize_trusted( &cfg, email_address, "TEAM_ID", secure_key, "YOUR_DEVICE_NAME", &err )) {
+        fprintf(stderr, "[xq_svc_authorize_trusted] %li : %s\n", err.responseCode, err.content );
+        xq_destroy_config(&cfg);
+        exit(EXIT_FAILURE);
+    }
+    printf( "Trusted Account Authorized\n" );
+    */
 
   // If a real email address was set.
   if (!xq_svc_authorize_alias(&cfg, email_address, &err)) {
