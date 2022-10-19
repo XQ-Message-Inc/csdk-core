@@ -313,10 +313,52 @@ int main(int argc, const char *argv[]) {
 
   printf("Alias Account authorized.\n");
 
-  const char message[] = {"Hello World"};
-  //testFileEncryption(argc, argv);
-  testDataEncryption(&cfg, "xq.public", message, Algorithm_OTP);
+  // Retrieving your access token
+  const char *access_token = xq_get_access_token(&cfg);
+  if (!access_token) {
+    fprintf(stderr, "[xq_get_access_token] Failed to get access token.\n");
+    xq_destroy_config(&cfg);
+    exit(EXIT_FAILURE);
+  }
+
+  char *token = strdup(access_token);
+
+  if (!xq_set_access_token(&cfg, token)) {
+    fprintf(stderr, "[xq_set_access_token] Failed to reset access token.\n");
+    free(token);
+    xq_destroy_config(&cfg);
+    exit(EXIT_FAILURE);
+  }
+
+  printf("Current Access Token: %s\n", token);
+
+  free(token);
+
+  // Retrieve information about this user.
+  struct xq_subscriber_info info = {0};
+  if (!xq_svc_get_subscriber(&cfg, &info, &err)) {
+    fprintf(stderr, "[xq_svc_get_subscriber] %li: %s\n", err.responseCode,
+            err.content);
+    xq_destroy_config(&cfg);
+    exit(EXIT_FAILURE);
+  }
+
+  // 6. Test OTP a new message
+  const char *message = "Hello World From John Doe";
+  printf("Encrypting message: %s...\n", message);
+  _Bool res = testDataEncryption(&cfg, info.mailOrPhone, message, Algorithm_OTP);
+  printf("OTP Encryption: %s.\n", res ? "OK" : "Failed");
+  res = testDataEncryption(&cfg, info.mailOrPhone, message, Algorithm_AES);
+  printf("AES Encryption (SHA 256): %s.\n", res ? "OK" : "Failed");
+  res = testDataEncryption(&cfg, info.mailOrPhone, message, Algorithm_AES_Strong);
+  printf("AES Encryption (SHA 512, 100K Rounds): %s.\n", res ? "OK" : "Failed");
+
+  // Cleanup
   xq_destroy_config(&cfg);
+
+  printf("Finished.\n");
+
+  // testFileEncryption(argc, argv);
+
   return 0;
-  
 }
