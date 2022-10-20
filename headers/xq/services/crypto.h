@@ -8,7 +8,7 @@
 #ifndef encrypt_h
 #define encrypt_h
 
-#define STRONG_HASH EVP_sha512
+#define STRONG_HASH EVP_sha256
 #define AES_ROUNDS 100000
 
 enum algorithm_type {
@@ -284,5 +284,12 @@ void xq_destroy_payload(struct xq_message_payload* obj);
 /// @param in The payload to convert.
 /// @param out The resulting payload.
 _Bool xq_base64_payload(struct xq_message_payload* in, struct xq_message_payload* out);
+
+
+/// Enable FIPS mode. Once enabled, only Strong AES encryption will be permitted for all packets.
+int xq_enable_fips(struct xq_config *cfg, const char* fips_conf_dir);
+
+/// Disable fips mode.
+int xq_disable_fips(struct xq_config *cfg);
 
 #endif /* encrypt_h */

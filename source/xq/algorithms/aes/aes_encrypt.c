@@ -13,6 +13,7 @@
 #include <openssl/evp.h>
 #include <openssl/aes.h>
 #include <openssl/err.h>
+#include <openssl/provider.h>
 #include <xq/config.h>
 #include <xq/services/quantum/quantum.h>
 #include <xq/services/crypto.h>
@@ -49,6 +50,7 @@ _Bool xq_aes_encrypt(
 
     
     _Bool compat = (key[0] == '.' && key[1] == 'A' );
+    _Bool fips_compliant = (key[0] == '.' && key[1] == 'D' );
     if (key[0] == '.') key += 2;
     
     int key_data_len = (int)strlen(key);
@@ -60,15 +62,18 @@ _Bool xq_aes_encrypt(
         EVP_CIPHER_CTX_set_padding(en, AES_PADDING);
     }
 
-    
+
     /*
      * Gen key & IV for AES 256 CBC mode. A SHA1 digest is used to hash the supplied key material.
      * nrounds is the number of times the we hash the material. More rounds are more secure but
      * slower.
      */
-    i = EVP_BytesToKey(EVP_aes_256_cbc(), (compat) ? EVP_md5() : STRONG_HASH() , salt, (unsigned char*)key, key_data_len, (compat) ? 1 : AES_ROUNDS, gen_key, gen_iv);
+    
+    const EVP_MD * hash = (compat)? EVP_md5() : STRONG_HASH();
+    i = EVP_BytesToKey(EVP_aes_256_cbc(), hash , salt, (unsigned char*)key, key_data_len, (compat) ? 1 : AES_ROUNDS, gen_key, gen_iv);
    
     if (i != 32) {
+        ERR_print_errors_fp(stderr);
         fprintf(stderr, "Key size is %d bits - should be 256 bits\n", i);
         EVP_CIPHER_CTX_free(en);
         return -1;
@@ -118,4 +123,67 @@ _Bool xq_aes_encrypt(
 
     return 1;
     
+}
+
+int xq_enable_fips(struct xq_config *cfg, const char *fips_conf_dir) {
+
+  OSSL_PROVIDER *fips;
+  OSSL_PROVIDER *base;
+  unsigned long err = 0;
+
+  if (fips_conf_dir != NULL) {
+    if (!OSSL_LIB_CTX_load_config(NULL, fips_conf_dir)) {
+      ERR_print_errors_fp(stderr);
+      fprintf(stderr, "Failed to load FIPS configuration.\n");
+      return 0;
+    }
+  }
+  fips = OSSL_PROVIDER_load(NULL, "fips");
+  if (fips == NULL) {
+    ERR_print_errors_fp(stderr);
+    fprintf(stderr, "Failed to load FIPS provider.\n");
+    return 0;
+  }
+  printf("FIPS Enabled: %s\n",
+         OSSL_PROVIDER_available(NULL, "fips") == 1  ? "yes" : "no");
+
+  base = OSSL_PROVIDER_load(NULL, "base");
+  if (base == NULL) {
+    OSSL_PROVIDER_unload(fips);
+    err = ERR_get_error();
+    char err_buf[255] = {0};
+    ERR_error_string(err, err_buf);
+    fprintf(stderr, "Failed to load base provider\n");
+    return 0;
+  }
+  
+  int res = EVP_default_properties_enable_fips(NULL, 1);
+  if (res == 0 ) {
+    ERR_print_errors_fp(stderr);
+    fprintf(stderr, "Failed to set default FIPS property.\n");
+    return 0;
+  }
+
+  cfg->_fips_provider = base;
+  cfg->_base_provider = fips;
+
+  return 1;
+}
+
+int xq_disable_fips(struct xq_config *cfg) {
+
+  if (cfg == 0) {
+    return 0;
+  }
+
+  if (cfg->_base_provider != 0) {
+    OSSL_PROVIDER_unload(cfg->_base_provider);
+    cfg->_base_provider = 0;
+  }
+  if (cfg->_fips_provider != 0) {
+    OSSL_PROVIDER_unload(cfg->_fips_provider);
+    cfg->_fips_provider = 0;
+  }
+  return 1;
+  
 }

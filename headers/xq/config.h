@@ -107,6 +107,8 @@ struct xq_config {
   int monitor_interval;
   long gateway_id;
   char* trusted_address;
+  void* _fips_provider;
+  void* _base_provider;
 };
 
 /// The different types of supported metadata. This affects the data that will
@@ -211,5 +213,6 @@ char *itoa(int value, char *buffer, int base);
 char* xq_get_file_name(const char* file_path, char* out_buffer);
 
 int xq_make_path(char* file_path, mode_t mode) ;
+
 
 #endif /* config_h */

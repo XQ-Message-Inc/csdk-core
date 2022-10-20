@@ -25,6 +25,11 @@ _Bool xq_aes_decrypt(
                      char* key,
                      struct xq_message_payload* result,
                      struct xq_error_info* error   ) {
+                     
+                     if (data == 0){
+                     fprintf(stderr, "No data to decrypt\n");
+                     return 0;
+                     }
 
     /* "opaque" encryption, decryption ctx structures that libcrypto uses to record
      status of enc/dec operations */
@@ -67,7 +72,8 @@ _Bool xq_aes_decrypt(
      * nrounds is the number of times the we hash the material. More rounds are more secure but
      * slower.
      */
-    i = EVP_BytesToKey(EVP_aes_256_cbc(), (compat) ? EVP_md5() : STRONG_HASH() , salt, (unsigned char*)key, key_data_len, (compat) ? 1 : AES_ROUNDS, gen_key, gen_iv);
+    const EVP_MD * hash = (compat)? EVP_md5() : STRONG_HASH();
+    i = EVP_BytesToKey(EVP_aes_256_cbc(), hash , salt, (unsigned char*)key, key_data_len, (compat) ? 1 : AES_ROUNDS, gen_key, gen_iv);
     if (i != 32) {
         fprintf(stderr, "Key size is %d bits - should be 256 bits\n", i);
         EVP_CIPHER_CTX_free(de);

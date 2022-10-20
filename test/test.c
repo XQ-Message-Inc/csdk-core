@@ -14,6 +14,10 @@
 #include <unistd.h>
 #include <xq/xq.h>
 
+// If you do not care about testing FIPS, or do not have a FIPS enabled build
+// of OpenSSL 3.x, set this flag to 0.
+#define FIPS_ENABLED 1
+
 int get_file_contents(const char *filepath, uint8_t **out) {
   if (out == 0) {
     fprintf(stderr, "[get_file_contents] out varable for storing file content "
@@ -41,7 +45,7 @@ int get_file_contents(const char *filepath, uint8_t **out) {
   return bytes_read;
 }
 
-_Bool testDataEncryption(struct xq_config *cfg, const char *recipients,
+_Bool dataLoop(struct xq_config *cfg, const char *recipients,
                      const char *message, int algorithm) {
 
   struct xq_message_payload result = {0, 0};
@@ -195,9 +199,13 @@ int testFileEncryption(int argc, const char *argv[]) {
   // Test file encryption
   struct xq_message_payload result = {0, 0};
 
+
   const char source_file[] = "/path/to/target/file";
   const char output_file[] = "/path/to/desired/output/file";
   const char decrypted_file[] = "/path/to/desired/decrypted/file";
+
+  unlink(decrypted_file);
+  unlink(output_file);
 
 
   const int CHUNK_SIZE = 8192;
@@ -315,7 +323,7 @@ int testFileEncryption(int argc, const char *argv[]) {
   return 0;
 }
 
-int main(int argc, const char *argv[]) {
+int testDataEncryption(int argc, const char *argv[]) {
 
   if (argc < 3) {
     fprintf(stderr, "Usage: test CONFIG_FILE_INI USER_ALIAS\n");
@@ -334,6 +342,7 @@ int main(int argc, const char *argv[]) {
 
   struct xq_error_info err = {0};
   const char *email_address = argv[2];
+  
 
   // 3. Authenticate an alias user.
   if (!xq_svc_authorize_alias(&cfg, email_address, &err)) {
@@ -378,19 +387,46 @@ int main(int argc, const char *argv[]) {
   // 6. Test OTP a new message
   const char *message = "Hello World From John Doe";
   printf("Encrypting message: %s...\n", message);
-  _Bool res = testDataEncryption(&cfg, info.mailOrPhone, message, Algorithm_OTP);
-  printf("OTP Encryption: %s.\n", res ? "OK" : "Failed");
-  res = testDataEncryption(&cfg, info.mailOrPhone, message, Algorithm_AES);
-  printf("AES Encryption (SHA 256): %s.\n", res ? "OK" : "Failed");
-  res = testDataEncryption(&cfg, info.mailOrPhone, message, Algorithm_AES_Strong);
-  printf("AES Encryption (SHA 512, 100K Rounds): %s.\n", res ? "OK" : "Failed");
+  _Bool res;
+  
 
+  res = dataLoop(&cfg, info.mailOrPhone, message, Algorithm_OTP);
+  printf("OTP Encryption: %s.\n", res ? "OK" : "Failed");
+  
+  if (FIPS_ENABLED) {
+      // Enable super secure mode.
+      if (xq_enable_fips(&cfg, NULL)){
+      
+        for (int x = 0; x < 10; ++ x){
+            res = dataLoop(&cfg, info.mailOrPhone, message, Algorithm_AES_Strong);
+            printf("AES Encryption (SHA 256, 100K Rounds FIPS): %s.\n", res ? "OK" : "Failed");
+            if (!res) {
+                xq_destroy_config(&cfg);
+                exit(EXIT_FAILURE);
+            }
+        }
+        xq_disable_fips(&cfg);
+      }
+  }
+  
+  else {
+    res = dataLoop(&cfg, info.mailOrPhone, message, Algorithm_AES);
+    printf("AES Encryption (SHA 256): %s.\n", res ? "OK" : "Failed");
+    res = dataLoop(&cfg, info.mailOrPhone, message, Algorithm_AES_Strong);
+    printf("AES Encryption (SHA 256, 100K Rounds): %s.\n", res ? "OK" : "Failed");
+  }
+  
   // Cleanup
   xq_destroy_config(&cfg);
 
-  printf("Finished.\n");
-
-  // testFileEncryption(argc, argv);
+  printf("Finished OK.\n");
 
   return 0;
+}
+
+int main(int argc, const char *argv[]) {
+    
+    testDataEncryption(argc, argv);
+    //testFileEncryption(argc, argv);
+  
 }

@@ -25,7 +25,7 @@ endif()
 
 
 # Ensure that openSSL, boost and cpprestsdk exist.
-find_package(OpenSSL 1.1 REQUIRED)
+find_package(OpenSSL 3.0 REQUIRED)
 find_package(CURL REQUIRED)
 
 # Set up the include directories.
