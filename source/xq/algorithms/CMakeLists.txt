@@ -1,3 +1,3 @@
 add_subdirectory( aes )
 add_subdirectory( otp )
-add_subdirectory( nist )
+add_subdirectory( fips )

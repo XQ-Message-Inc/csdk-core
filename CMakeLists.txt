@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.11)
 
+# Example: --Dssl=/usr/local/Cellar/openssl@1.1/1.1.1k/
+if (NOT DEFINED ssl)
+    message(FATAL_ERROR "Path to OpenSSL root directory must be defined (-Dssl=/path/to/openssl/root)")
+else()
+    set( OPENSSL_ROOT_DIR ${ssl} )
+endif()
 
 if (APPLE) 
 set(CMAKE_C_COMPILER /usr/bin/gcc)
@@ -7,7 +13,6 @@ set(CMAKE_CXX_COMPILER /usr/bin/g++)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_OSX_ARCHITECTURES x86_64)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum OS X deployment version" FORCE)
-set(OPENSSL_ROOT_DIR ${OPENSSL_ROOT_DIR} /usr/local/Cellar/openssl@1.1/1.1.1k/)
 set(OPENSSL_CRYPTO_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libcrypto.dylib CACHE FILEPATH "" FORCE)
 set(OPENSSL_SSL_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libssl.dylib CACHE FILEPATH "" FORCE)
 endif()
@@ -25,12 +30,13 @@ endif()
 
 
 # Ensure that openSSL, boost and cpprestsdk exist.
-find_package(OpenSSL 3.0 REQUIRED)
+find_package(OpenSSL 1.1 REQUIRED)
 find_package(CURL REQUIRED)
 
 # Set up the include directories.
 include_directories(
 "${PROJECT_SOURCE_DIR}/headers"
+"${OPENSSL_ROOT_DIR}/include"
 "${CMAKE_INSTALL_PREFIX}/include"
 /usr/local/include
 )

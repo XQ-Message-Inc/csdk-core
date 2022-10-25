@@ -79,6 +79,10 @@ struct xq_file_stream {
     long header_index;
     char filename[512];
     int native_handle;
+    int algorithm;
+    long actual_size;
+    void* extra;
+    int state;
 };
 
 

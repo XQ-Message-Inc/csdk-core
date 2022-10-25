@@ -15,7 +15,7 @@
 #include <xq/services/crypto.h>
 #include <xq/algorithms/otp/otp_encrypt.h>
 #include <xq/algorithms/aes/aes_encrypt.h>
-#include <xq/algorithms/nist/nist_encrypt.h>
+#include <xq/algorithms/fips/fips_encrypt.h>
 #include <xq/services/sub/packet.h>
 
 
@@ -65,25 +65,20 @@ _Bool xq_encrypt(
     
     switch (algorithm) {
         case Algorithm_OTP: {
-            xq_key_to_hex(&quantum, &key, 'X');
-            success = xq_otp_encrypt(data, data_len, key.data, result, error);
+            xq_key_to_hex(&quantum, &key, Indicator_OTP);
+            success = xq_otp_encrypt(data, data_len, key.data, result, 0, error);
         }
         break;
         case Algorithm_AES: {
-            xq_key_to_hex(&quantum, &key, 'A');
-            success = xq_aes_encrypt( data,  data_len, key.data, result, error);
+            xq_key_to_hex(&quantum, &key, Indicator_AES);
+            success = xq_aes_encrypt( data,  data_len, key.data, result, 0, error);
         }
         break;
-        case Algorithm_AES_Strong: {
-            xq_key_to_hex(&quantum, &key, 'D');
-            success = xq_aes_encrypt( data,  data_len, key.data, result, error);
+        case Algorithm_FIPS: {
+            xq_key_to_hex(&quantum, &key, Indicator_FIPS);
+            success = xq_aes_encrypt( data,  data_len, key.data, result, 0, error);
         }
             
-        break;
-        case Algorithm_NIST: {
-            xq_key_to_hex(&quantum, &key, 'N');
-            success = xq_nist_encrypt( NULL, data,  data_len, key.data, result, error);
-        }
         break;
         default: break;
     }
@@ -143,4 +138,26 @@ _Bool xq_encrypt_and_store_token(
     free(int_payload.token_or_key);
     return 1;
     
+}
+
+
+void* xq_create_ctx(enum algorithm_type algorithm, unsigned char *key_data, int key_data_len, uint8_t* salt, struct xq_error_info *error){
+    switch (algorithm) {
+        case Algorithm_OTP: return xq_otp_create_ctx(key_data, key_data_len, salt, error);
+        case Algorithm_AES:
+        case Algorithm_FIPS: return xq_aes_create_ctx(key_data, key_data_len, salt, error);
+        default:
+        fprintf(stderr, "Invvalid algorithm - no context available.\n");
+    }
+    return 0;
+}
+
+void xq_destroy_ctx(enum algorithm_type algorithm, void* ctx){
+    if (ctx == 0) return;
+    switch (algorithm) {
+        case Algorithm_OTP: xq_otp_destroy_ctx(ctx);
+        case Algorithm_AES:
+        case Algorithm_FIPS: xq_aes_destroy_ctx(ctx);
+        default: break;
+    }
 }

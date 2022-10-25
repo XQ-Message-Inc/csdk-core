@@ -14,6 +14,9 @@
 #include <xq/services/quantum/quantum.h>
 #include <xq/services/crypto.h>
 #include <ext/base64/base64.h>
+#include <xq/algorithms/otp/otp_encrypt.h>
+#include <xq/algorithms/aes/aes_encrypt.h>
+
 
 static int rand_int(int n) {
     int limit = RAND_MAX - RAND_MAX % n;
@@ -160,4 +163,22 @@ _Bool xq_base64_payload(struct xq_message_payload* in, struct xq_message_payload
         return base64_encode_with_buffer(in->data, in->length, out->data, &out->length );
     }
     
+}
+
+
+_Bool xq_encrypt_with_key( enum algorithm_type algorithm,
+                        uint8_t* data,
+                        size_t data_len,
+                        char* key,
+                        struct xq_message_payload* result,
+                        void* context,
+                        struct xq_error_info* error   ){
+  switch(algorithm) {
+    case Algorithm_OTP: return xq_otp_encrypt(data, data_len, key, result, context, error);
+    case Algorithm_AES:
+    case Algorithm_FIPS: return xq_aes_encrypt(data, data_len, key, result, context, error);
+    default:
+    fprintf(stderr, "Algorithm not implemented.\n");
+    return 0;
+  }
 }

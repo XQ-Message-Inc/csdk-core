@@ -1,5 +1,5 @@
 //
-//  aes_decrypt.c
+//  fips_decrypt.c
 //  xqc
 //
 //  Created by Ike E on 10/21/20.
@@ -17,7 +17,7 @@
 #include <xq/config.h>
 #include <xq/services/quantum/quantum.h>
 #include <xq/services/crypto.h>
-#include <xq/algorithms/aes/aes_encrypt.h>
+#include <xq/algorithms/fips/fips_encrypt.h>
 
 
 struct fips_dec_data {
@@ -30,9 +30,9 @@ struct fips_dec_data {
  * Create a 256 bit key and IV using the supplied key_data. salt can be added for taste.
  * Fills in the encryption and decryption ctx objects and returns 0 on success
  **/
-int aes_decrypt_init(unsigned char *key_data, int key_data_len, unsigned char *salt, EVP_CIPHER_CTX *e_ctx)
+int fips_decrypt_init(unsigned char *key_data, int key_data_len, unsigned char *salt, EVP_CIPHER_CTX *e_ctx)
 {
-  int i, nrounds = 14;
+  int i, nrounds = FIPS_ROUNDS;
   unsigned char key[32], iv[32];
   
 
@@ -41,7 +41,7 @@ int aes_decrypt_init(unsigned char *key_data, int key_data_len, unsigned char *s
    * nrounds is the number of times the we hash the material. More rounds are more secure but
    * slower.
    */
-  i = EVP_BytesToKey(AES_CIPHER, AES_HASH(), salt, key_data, key_data_len, nrounds, key, iv);
+  i = EVP_BytesToKey(FIPS_CIPHER, FIPS_HASH(), salt, key_data, key_data_len, nrounds, key, iv);
   if (i != 32) {
     printf("Key size is %d bits - should be 256 bits\n", i);
     return -1;
@@ -49,10 +49,10 @@ int aes_decrypt_init(unsigned char *key_data, int key_data_len, unsigned char *s
 
   EVP_CIPHER_CTX_init(e_ctx);
   
-  EVP_CIPHER_CTX_set_padding(e_ctx, AES_PADDING);
+  EVP_CIPHER_CTX_set_padding(e_ctx, FIPS_PADDING);
   
   
-  EVP_DecryptInit_ex(e_ctx, AES_CIPHER, NULL, key, iv);
+  EVP_DecryptInit_ex(e_ctx, FIPS_CIPHER, NULL, key, iv);
 
   return 0;
 }
@@ -61,7 +61,7 @@ int aes_decrypt_init(unsigned char *key_data, int key_data_len, unsigned char *s
  * Encrypt *len bytes of data
  * All data going in & out is considered binary (unsigned char[])
  */
-_Bool aes_decrypt(EVP_CIPHER_CTX *e, unsigned char *ciphertext, int len, uint8_t* plaintext, uint32_t *plaintext_len)
+_Bool fips_decrypt(EVP_CIPHER_CTX *e, unsigned char *ciphertext, int len, uint8_t* plaintext, uint32_t *plaintext_len)
 {
   /* max ciphertext len for a n bytes of plaintext is n + AES_BLOCK_SIZE -1 bytes */
   int p_len = len, f_len = 0;
@@ -93,7 +93,7 @@ _Bool aes_decrypt(EVP_CIPHER_CTX *e, unsigned char *ciphertext, int len, uint8_t
   return 1;
 }
 
-_Bool xq_aes_decrypt(
+_Bool xq_fips_decrypt(
                      uint8_t* data, size_t data_len,
                      char* key,
                      struct xq_message_payload* result,
@@ -143,9 +143,9 @@ _Bool xq_aes_decrypt(
     
     _Bool success = 0;
     
-    struct fips_dec_data* aes_data = (struct fips_dec_data* ) ctx;
+    struct fips_dec_data* fips_data = (struct fips_dec_data* ) ctx;
     
-    if (!aes_data) {
+    if (!fips_data) {
         // Step 1: Initialize
         en = EVP_CIPHER_CTX_new();
         if (!en) {
@@ -155,7 +155,7 @@ _Bool xq_aes_decrypt(
         
 
         // RAND_bytes(salt, 8);
-        if (aes_decrypt_init((unsigned char*)&key[key_offset], key_length, salt, en) != 0) {
+        if (fips_decrypt_init((unsigned char*)&key[key_offset], key_length, salt, en) != 0) {
             ERR_print_errors_fp(stderr);
             return 0;
         }
@@ -163,7 +163,7 @@ _Bool xq_aes_decrypt(
         // Step 2: Decrypt
         int len = (int) data_len - prefix_offset;
         // result->length -= prefix_offset;
-        success = aes_decrypt(en, needle, len, result->data, &result->length);
+        success = fips_decrypt(en, needle, len, result->data, &result->length);
         // Step 3: Cleanup (if context is local)
         if (!ctx) {
             EVP_CIPHER_CTX_free(en);
@@ -172,16 +172,16 @@ _Bool xq_aes_decrypt(
     }
     
     else{
-        en = (EVP_CIPHER_CTX*) aes_data->ctx;
+        en = (EVP_CIPHER_CTX*) fips_data->ctx;
          int len = (int) data_len;
-        success = aes_decrypt(en, needle, len, result->data, &result->length);
+        success = fips_decrypt(en, needle, len, result->data, &result->length);
     }
 
     return success;
 }
 
 
-_Bool xq_aes_decrypt_file_start(
+_Bool xq_fips_decrypt_file_start(
                     char* key,
                     const char* in_file_path,
                       struct xq_file_stream* stream_info,
@@ -275,7 +275,7 @@ _Bool xq_aes_decrypt_file_start(
         return 0;
     }
     
-    if (aes_decrypt_init((unsigned char*)&key[key_offset], key_length, dec->salt, dec->ctx) != 0) {
+    if (fips_decrypt_init((unsigned char*)&key[key_offset], key_length, dec->salt, dec->ctx) != 0) {
         ERR_print_errors_fp(stderr);
         fclose(in_fp);
         return 0;
@@ -296,7 +296,7 @@ _Bool xq_aes_decrypt_file_start(
     
 }
 
-size_t xq_aes_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data, size_t data_length,struct xq_error_info *error){
+size_t xq_fips_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data, size_t data_length,struct xq_error_info *error){
        if (stream_info == 0 || stream_info->extra == 0) {
         return 0;
     }
@@ -336,7 +336,7 @@ size_t xq_aes_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* da
     
     uint32_t plaintext_len = data_length;
 
-     _Bool success = aes_decrypt(en, &data[written], bytes_read, data, &plaintext_len);
+     _Bool success = fips_decrypt(en, &data[written], bytes_read, data, &plaintext_len);
      if (!success) {
         return 0;
      }
@@ -344,7 +344,7 @@ size_t xq_aes_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* da
      return bytes_read;
 }
 
-_Bool xq_aes_decrypt_file_end(struct xq_file_stream* stream_info ){
+_Bool xq_fips_decrypt_file_end(struct xq_file_stream* stream_info ){
     if (stream_info) {
         fclose(stream_info->fp);
         if (stream_info->extra) {

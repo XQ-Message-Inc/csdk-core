@@ -8,8 +8,7 @@
 #ifndef encrypt_h
 #define encrypt_h
 
-#define STRONG_HASH EVP_sha256
-#define AES_ROUNDS 100000
+
 
 enum algorithm_type {
     /// This should only be used during a decryption phase. Automatically decide which algorithm to used based on its key prefix.
@@ -19,13 +18,26 @@ enum algorithm_type {
     /// Advanced Encryption Standard (AES)
     Algorithm_AES = 2,
     /// 5-Pass Advanced Encryption Standard (AES) with SHA-2 key encoding.
-    Algorithm_AES_Strong = 3,
-    /// NIST Algorithm
-    Algorithm_NIST = 4,
+    Algorithm_FIPS = 3,
+};
+
+enum algorithm_type_indicator : uint8_t {
+    Indicator_OTP = 'X',
+    Indicator_AES = 'A',
+    Indicator_FIPS = 'F'
 };
 
 
-
+/// Get a user friendly algorithm name based on the provided type
+/// @param algorithm The algorithm type
+static inline const char* algorithm_to_string(enum algorithm_type algorithm) {
+    switch (algorithm) {
+        case Algorithm_OTP: return "OTP";
+        case Algorithm_AES: return "AES";
+        case Algorithm_FIPS: return "FIPS";
+        default: return "Unknown";
+    }
+}
 
 /// Check whether an integer is a valid algorithm type or not.
 /// @param algo The integer to check.
@@ -33,8 +45,7 @@ static inline _Bool is_valid_algorithm(int algo) {
     switch ( algo ) {
         case Algorithm_OTP:
         case Algorithm_AES:
-        case Algorithm_AES_Strong:
-        case Algorithm_NIST:
+        case Algorithm_FIPS:
             return 1;
         default:
             return 0;
@@ -62,11 +73,17 @@ struct xq_hex_quantum_key {
 struct xq_message_token;
 struct xq_file_stream;
 
+
+/// Extract the XQ token from an encrypted file
+/// @param config The XQ configuration instance.
+/// @param in_file_path Full path of the input file.
+/// @param token The token registered with the encryption key
+/// @param error An optional, user-provided block  to store details of any error that occurs.
 _Bool xq_get_file_token(struct xq_config *config, const char *in_file_path,
                             struct xq_message_token *token,
                             struct xq_error_info *error) ;
 
-/// Encrypts data using the specified algorithm.
+/// Encrypts the provided data block.
 ///
 /// This service will fetch quantum data and use that to generate a secret key. If encryption is successful, it will fill the result object with
 /// the newly encrypted data, and the secret key used.
@@ -86,7 +103,25 @@ _Bool xq_encrypt(   struct xq_config* config,
                     struct xq_quantum_pool* pool,
                     struct xq_message_payload* result,
                     struct xq_error_info* error   );
-          
+
+
+/// Encrypts the provided data block. The difference between this and [xq_encrypt] is that you must provide your own key here.
+/// @param algorithm The algorithm to use.
+/// @param data The data to encrypt
+/// @param data_len The size of the data in bytes.
+/// @param key Your encryption key
+/// @param result The user-provided result instance. The data storage may be preallocated. Otherwise, it will be allocated automatically ( the user must manually clean up after usage).
+/// @param context The optional encryption context. Not providing this for certain algorithms can reduce performance (when called repeatedly)/
+/// @param error An optional, user-provided block  to store details of any error that occurs.
+_Bool xq_encrypt_with_key( enum algorithm_type algorithm,
+                        uint8_t* data,
+                        size_t data_len,
+                        char* key,
+                        struct xq_message_payload* result,
+                        void* context,
+                        struct xq_error_info* error   );
+
+
 /// Encrypts a file and store the results in another using the specified algorithm.
 /// @param config The XQ configuration instance.
 /// @param algorithm The algorithm to use.
@@ -100,7 +135,20 @@ _Bool xq_encrypt_file(
                       char* token,
                       char* key,
                      struct xq_error_info* error   );
-                     
+                  
+
+/// Prepare a file encryption stream
+/// @param config The XQ configuration instance.
+/// @param in_file_path Full path of the input file.
+/// @param out_file_path Full path of the output file.
+/// @param algorithm The algorithm to use.
+/// @param entropy_bytes The number of quantum entropy bytes to use for the key
+/// @param pool The quantum pool where entropy bytes will be obtained from
+/// @param recipients The list of message recipients
+/// @param hours_to_expiration The number of hours to allow key access
+/// @param delete_on_read Specifies whether the key will be deleted after the first use
+/// @param stream_info The object where stream information will be stored.
+/// @param error An optional, user-provided block  to store details of any error that occurs.
 _Bool xq_encrypt_file_start(struct xq_config *config,  const char *in_file_path, const char *out_file_path,
                              enum algorithm_type algorithm,
                             int entropy_bytes,
@@ -109,8 +157,19 @@ _Bool xq_encrypt_file_start(struct xq_config *config,  const char *in_file_path,
                             struct xq_file_stream *stream_info,
                             struct xq_error_info *error);
 
+
+/// Encrypt a data block from a file stream.
+/// @param stream_info Object containing information about the file stream
+/// @param data A buffer where the encrypted data will be stored.
+/// @param data_length The size of the data buffer. Determines how much data will get encrypted in this step.
+/// @param error An optional, user-provided block  to store details of any error that occurs.
+/// @return The number of bytes that actually got encrypted.
 size_t xq_encrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data, size_t data_length,struct xq_error_info *error);
 
+
+/// <#Description#>
+/// @param stream_info <#stream_info description#>
+/// @param error <#error description#>
 _Bool xq_encrypt_file_end(struct xq_file_stream* stream_info,struct xq_error_info *error );
 
 
@@ -151,13 +210,13 @@ _Bool xq_encrypt_and_store_token(
                                  struct xq_metadata* metadata,
                                  struct xq_message_payload* result,
                                  struct xq_error_info* error   );
-                                 
-          
+
+
 /// Encrypt the data from one file and store the result in another.
 /// @param config The XQ configuration instance.
 /// @param algorithm The algorithm to use.
-/// @param in_fp The file containing the data to be encrypted.
-/// @param out_fp The output file where the encrypted data will be stored.
+/// @param in_file_path The file containing the data to be encrypted.
+/// @param out_file_path The output file where the encrypted data will be stored.
 /// @param entropy_size The amount of quantum entropy to use for the key.
 /// @param pool  An optional quantum pool to use  for entropy.
 /// @param recipients A list of the recipients.
@@ -176,9 +235,9 @@ _Bool xq_encrypt_file_and_store_token(
                                  int hours_to_expiration,
                                  _Bool delete_on_read,
                                  struct xq_error_info* error     );
-                                 
-                                 
-enum algorithm_type xq_algorithm_from_token(const char* token);
+
+
+enum algorithm_type algorithm_from_key(const char* key);
 
 
 /// Decrypts a message using the secret key associated with the provided token.
@@ -218,22 +277,50 @@ _Bool xq_decrypt_with_key(  struct xq_config* config,
                             char* key,
                             struct xq_message_payload* result,
                             struct xq_error_info* error   );
-                            
-                            
+
+
+/// Decrypts an encrypted file
+/// @param config The XQ configuration instance.
+/// @param in_file_path The path to file containing the data to be decrypted.
+/// @param out_file_dir The path to the directory (or full path to file) where the decrypted file will be stored
+/// @param resulting_file_path  An optional buffer where the full output path can be stored. Useful if out_file_dir is a directory.
+/// @param error An optional, user-provided block  to store details of any error that occurs.
 _Bool xq_decrypt_file(struct xq_config* config,
                         const char* in_file_path,
                         const char* out_file_dir,
                         struct xq_message_payload* resulting_file_path,
                         struct xq_error_info* error  );
-                        
+
+
+/// Prepare a stream for file decryption.
+/// @param config The XQ configuration instance.
+/// @param in_file_path The path to file containing the data to be decrypted.
+/// @param stream_info Object for storing information about the file stream
+/// @param error An optional, user-provided block  to store details of any error that occurs.
 _Bool xq_decrypt_file_start(struct xq_config* config, const char* in_file_path,
                       struct xq_file_stream* stream_info,
                      struct xq_error_info* error   );
 
-size_t xq_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data, size_t data_length);
 
-_Bool xq_decrypt_file_end(struct xq_file_stream* stream_info );
+/// Decrypt a data block from a file stream.
+/// @param stream_info Object containing information about the file stream
+/// @param data A buffer where the decrypted data will be stored.
+/// @param data_length The size of the data buffer. Determines how much data will get decrypted in this step.
+/// @param error An optional, user-provided block  to store details of any error that occurs.
+size_t xq_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* data, size_t data_length,  struct xq_error_info *error );
 
+
+/// Cleans up a stream after decryption.
+/// @param stream_info Object containing information about the file stream
+/// @param error An optional, user-provided block  to store details of any error that occurs.
+_Bool xq_decrypt_file_end(struct xq_file_stream* stream_info,struct xq_error_info *error  );
+
+
+
+/// Gets the real (unencrypted) size of an XQ encrypted file.
+/// @param config The XQ configuration instance.
+/// @param in_file_path  The path to file.
+/// @param error An optional, user-provided block  to store details of any error that occurs.
 long xq_get_real_file_size( struct xq_config* config, const char* in_file_path,  struct xq_error_info *error  );
 
 
@@ -286,10 +373,49 @@ void xq_destroy_payload(struct xq_message_payload* obj);
 _Bool xq_base64_payload(struct xq_message_payload* in, struct xq_message_payload* out);
 
 
-/// Enable FIPS mode. Once enabled, only Strong AES encryption will be permitted for all packets.
-int xq_enable_fips(struct xq_config *cfg, const char* fips_conf_dir);
+/// Create a new context for the specified algorithm.
+/// - Parameters:
+///   - algorithm: The algorithm to use.
+///   - key_data: The encryption secret key
+///   - key_data_len: The secret key length
+///   - salt: An 8 byte string to use as the salt
+///   - error: An optional, user-provided block  to store details of any error that occurs.
+void* xq_create_ctx(enum algorithm_type algorithm, unsigned char *key_data, int key_data_len, uint8_t* salt, struct xq_error_info *error);
 
-/// Disable fips mode.
-int xq_disable_fips(struct xq_config *cfg);
+
+/// Destroy the encryption context
+/// - Parameters:
+///   - algorithm: The algorithm to use.
+///   - ctx: The encryption context to destroy
+void xq_destroy_ctx(enum algorithm_type algorithm, void* ctx);
+
+
+/// Typedef for file decryption start method
+typedef _Bool (*decrypt_file_start_type)(char* key,const char* in_file_path,
+                      struct xq_file_stream* stream_info,
+                     struct xq_error_info* error   );
+                     
+/// Typedef for file decryption step method
+typedef size_t (*decrypt_file_step_type)( struct xq_file_stream* stream_info, uint8_t* data, size_t data_length,struct xq_error_info* error );
+
+/// Typedef for file decryption finish method
+typedef _Bool (*decrypt_file_end_type)(struct xq_file_stream* stream_info,struct xq_error_info *error  );
+
+
+/// Typedef for file encryption start method
+typedef _Bool (*encrypt_file_start_type)(const char* in_file_path,
+                      const char* out_file_path,
+                      char* token,
+                      char* key,
+                      struct xq_file_stream* stream_info,
+                     struct xq_error_info* error   );
+
+/// Typedef for file encryption step method
+typedef size_t (*encrypt_file_step_type)( struct xq_file_stream* stream_info, uint8_t* data, size_t data_length,struct xq_error_info *error);
+
+/// Typedef for file encryption start method
+typedef _Bool (*encrypt_file_end_type)(struct xq_file_stream* stream_info,struct xq_error_info *error );
+
+
 
 #endif /* encrypt_h */

@@ -1,5 +1,5 @@
 //
-//  aes_encrypt.c
+//  fips_encrypt.c
 //  xqc
 //
 //  Created by Ike E on 10/21/20.
@@ -13,10 +13,13 @@
 #include <openssl/evp.h>
 #include <openssl/aes.h>
 #include <openssl/err.h>
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+#include <openssl/provider.h>
+#endif
 #include <xq/config.h>
 #include <xq/services/quantum/quantum.h>
 #include <xq/services/crypto.h>
-#include <xq/algorithms/aes/aes_encrypt.h>
+#include <xq/algorithms/fips/fips_encrypt.h>
 #include <openssl/rand.h>
 
 
@@ -29,18 +32,19 @@ struct fips_enc_data {
  * Create a 256 bit key and IV using the supplied key_data. salt can be added for taste.
  * Fills in the encryption and decryption ctx objects and returns 0 on success
  **/
-int aes_encrypt_init(unsigned char *key_data, int key_data_len, unsigned char *salt, EVP_CIPHER_CTX *e_ctx)
+int fips_encrypt_init(unsigned char *key_data, int key_data_len, unsigned char *salt, EVP_CIPHER_CTX *e_ctx)
 {
-  int i, nrounds = 14;
+  int i, nrounds = FIPS_ROUNDS;
   unsigned char key[32], iv[32];
-
+  
+  
   
   /*
    * Gen key & IV for AES 256 CBC mode. A SHA1 digest is used to hash the supplied key material.
    * nrounds is the number of times the we hash the material. More rounds are more secure but
    * slower.
    */
-  i = EVP_BytesToKey(AES_CIPHER, AES_HASH(), salt, key_data, key_data_len, nrounds, key, iv);
+  i = EVP_BytesToKey(FIPS_CIPHER, FIPS_HASH(), salt, key_data, key_data_len, nrounds, key, iv);
   if (i != 32) {
     printf("Key size is %d bits - should be 256 bits\n", i);
     return -1;
@@ -48,9 +52,9 @@ int aes_encrypt_init(unsigned char *key_data, int key_data_len, unsigned char *s
 
   EVP_CIPHER_CTX_init(e_ctx);
   
-  EVP_CIPHER_CTX_set_padding(e_ctx, AES_PADDING);
+  EVP_CIPHER_CTX_set_padding(e_ctx, FIPS_PADDING);
   
-  EVP_EncryptInit_ex(e_ctx, AES_CIPHER, NULL, key, iv);
+  EVP_EncryptInit_ex(e_ctx, FIPS_CIPHER, NULL, key, iv);
 
   return 0;
 }
@@ -59,7 +63,7 @@ int aes_encrypt_init(unsigned char *key_data, int key_data_len, unsigned char *s
  * Encrypt *len bytes of data
  * All data going in & out is considered binary (unsigned char[])
  */
-_Bool aes_encrypt(EVP_CIPHER_CTX *e, unsigned char *plaintext, int len, uint8_t* ciphertext, uint32_t *ciphertext_len)
+_Bool fips_encrypt(EVP_CIPHER_CTX *e, unsigned char *plaintext, int len, uint8_t* ciphertext, uint32_t *ciphertext_len)
 {
   /* max ciphertext len for a n bytes of plaintext is n + AES_BLOCK_SIZE -1 bytes */
   int c_len = len + AES_BLOCK_SIZE, f_len = 0;
@@ -91,7 +95,7 @@ _Bool aes_encrypt(EVP_CIPHER_CTX *e, unsigned char *plaintext, int len, uint8_t*
   return 1;
 }
 
-void* xq_aes_create_ctx(unsigned char *key_data, int key_data_len, uint8_t* salt, struct xq_error_info *error){
+void* xq_fips_create_ctx(unsigned char *key_data, int key_data_len, uint8_t* salt, struct xq_error_info *error){
     struct fips_enc_data* d = malloc(sizeof(struct fips_enc_data));
     
      d->ctx = EVP_CIPHER_CTX_new();
@@ -102,9 +106,9 @@ void* xq_aes_create_ctx(unsigned char *key_data, int key_data_len, uint8_t* salt
         
         int key_offset =  (key_data[0] == '.') ? 2 : 0;
         int key_length = key_data_len - key_offset;
-
+        
         RAND_bytes(salt, 8);
-        if (aes_encrypt_init((unsigned char*)&key_data[key_offset], key_length,(unsigned char*) &d->salt, d->ctx) != 0) {
+        if (fips_encrypt_init((unsigned char*)&key_data[key_offset], key_length,(unsigned char*) &d->salt, d->ctx) != 0) {
             ERR_print_errors_fp(stderr);
             return 0;
         }
@@ -120,7 +124,7 @@ static inline void create_salt(uint8_t* salt){
         }
 }
 
-void xq_aes_destroy_ctx(void* ctx){
+void xq_fips_destroy_ctx(void* ctx){
     struct fips_enc_data* d = (struct fips_enc_data*) ctx;
     if (d && d->ctx) {
         EVP_CIPHER_CTX_free(d->ctx);
@@ -129,7 +133,7 @@ void xq_aes_destroy_ctx(void* ctx){
 }
 
 
-_Bool xq_aes_encrypt(
+_Bool xq_fips_encrypt(
  uint8_t* data, size_t data_len,
                      char* key,
                      struct xq_message_payload* result,
@@ -168,9 +172,9 @@ _Bool xq_aes_encrypt(
     
     _Bool success = 0;
     
-    struct fips_enc_data* aes_data = (struct fips_enc_data* ) ctx;
+    struct fips_enc_data* fips_data = (struct fips_enc_data* ) ctx;
     
-    if (!aes_data) {
+    if (!fips_data) {
         // Step 1: Initialize
         en = EVP_CIPHER_CTX_new();
         if (!en) {
@@ -181,7 +185,7 @@ _Bool xq_aes_encrypt(
         create_salt(salt);
         
         // RAND_bytes(salt, 8);
-        if (aes_encrypt_init((unsigned char*)&key[key_offset], key_length, salt, en) != 0) {
+        if (fips_encrypt_init((unsigned char*)&key[key_offset], key_length, salt, en) != 0) {
             ERR_print_errors_fp(stderr);
             return 0;
         }
@@ -189,7 +193,7 @@ _Bool xq_aes_encrypt(
         // Step 2: Encrypt
         int len = (int) data_len;
         result->length -= prefix_offset;
-        success = aes_encrypt(en, data, len, result->data + prefix_offset, &result->length);
+        success = fips_encrypt(en, data, len, result->data + prefix_offset, &result->length);
         if (success){
             memccpy(result->data, "Salted__", '\0', 8);
             memccpy(result->data + 8, salt , '\0', 8);
@@ -203,13 +207,13 @@ _Bool xq_aes_encrypt(
     }
     
     else{
-        en = (EVP_CIPHER_CTX*) aes_data->ctx;
+        en = (EVP_CIPHER_CTX*) fips_data->ctx;
          int len = (int) data_len;
         result->length -= prefix_offset;
-        success = aes_encrypt(en, data, len, result->data + prefix_offset, &result->length);
+        success = fips_encrypt(en, data, len, result->data + prefix_offset, &result->length);
         if (success){
             memccpy(result->data, "Salted__", '\0', 8);
-            memccpy(result->data + 8, aes_data->salt , '\0', 8);
+            memccpy(result->data + 8, fips_data->salt , '\0', 8);
             result->length += prefix_offset;
         }
     }
@@ -218,8 +222,8 @@ _Bool xq_aes_encrypt(
 }
 
 
-_Bool xq_aes_encrypt_file_start( const char* in_file_path,
-                    const char* out_file_path,
+_Bool xq_fips_encrypt_file_start(const char* in_file_path,
+                      const char* out_file_path,
                       char* token,
                       char* key,
                       struct xq_file_stream* stream_info,
@@ -306,7 +310,7 @@ _Bool xq_aes_encrypt_file_start( const char* in_file_path,
     stream_info->extra = enc;
     
     // RAND_bytes(salt, 8);
-    if (aes_encrypt_init((unsigned char*)&key[key_offset], key_length, enc->salt, enc->ctx) != 0) {
+    if (fips_encrypt_init((unsigned char*)&key[key_offset], key_length, enc->salt, enc->ctx) != 0) {
         ERR_print_errors_fp(stderr);
         fclose(out_fp);
         return 0;
@@ -344,7 +348,7 @@ _Bool xq_aes_encrypt_file_start( const char* in_file_path,
     return 1;
  }
  
- size_t xq_aes_encrypt_file_step(struct xq_file_stream *stream_info, uint8_t *data,
+ size_t xq_fips_encrypt_file_step(struct xq_file_stream *stream_info, uint8_t *data,
                            size_t data_length,struct xq_error_info *error){
     
     if (stream_info == 0 || stream_info->extra == 0) {
@@ -356,7 +360,7 @@ _Bool xq_aes_encrypt_file_start( const char* in_file_path,
     EVP_CIPHER_CTX* en = (EVP_CIPHER_CTX*) enc->ctx;
     
 
-    uint8_t out_buffer[AES_STREAM_CHUNK_SIZE + AES_BLOCK_SIZE];
+    uint8_t out_buffer[FIPS_STREAM_CHUNK_SIZE + AES_BLOCK_SIZE];
     _Bool has_more = 1;
     int count_index = 0;
     uint32_t ciphertext_len;
@@ -366,11 +370,11 @@ _Bool xq_aes_encrypt_file_start( const char* in_file_path,
 
     
      do {
-        int to_write =  (data_length < AES_STREAM_CHUNK_SIZE) ? data_length : AES_STREAM_CHUNK_SIZE;
+        int to_write =  (data_length < FIPS_STREAM_CHUNK_SIZE) ? data_length : FIPS_STREAM_CHUNK_SIZE;
         if (to_write == 0) break;
         ciphertext_len = sizeof(out_buffer);
         
-        _Bool success = aes_encrypt(en, &data[total_read], to_write, out_buffer, &ciphertext_len);
+        _Bool success = fips_encrypt(en, &data[total_read], to_write, out_buffer, &ciphertext_len);
         if (!success) {
             return 0;
         }
@@ -405,7 +409,7 @@ _Bool xq_aes_encrypt_file_start( const char* in_file_path,
     return total_read;
  }
                      
-_Bool xq_aes_encrypt_file_end(struct xq_file_stream *stream_info, struct xq_error_info *error){
+_Bool xq_fips_encrypt_file_end(struct xq_file_stream *stream_info, struct xq_error_info *error){
      if (stream_info) {
      
         if (stream_info->native_handle > 0) {
@@ -438,3 +442,101 @@ _Bool xq_aes_encrypt_file_end(struct xq_file_stream *stream_info, struct xq_erro
     return 1;
 }
 
+
+
+int xq_enable_fips(struct xq_config *cfg, const char *fips_conf_dir) {
+
+  #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+    OSSL_PROVIDER *fips;
+    OSSL_PROVIDER *base;
+    unsigned long err = 0;
+    
+    // Check whether fips is already enabled.
+    if (OSSL_PROVIDER_available(NULL, "fips") == 1) return 1;
+
+    if (fips_conf_dir != NULL) {
+        if (!OSSL_LIB_CTX_load_config(NULL, fips_conf_dir)) {
+          ERR_print_errors_fp(stderr);
+          fprintf(stderr, "Failed to load FIPS configuration.\n");
+          exit(EXIT_FAILURE);
+        }
+    }
+    
+    // Unload the Base provider
+    if (cfg->_base_provider != 0) {
+        OSSL_PROVIDER_unload(cfg->_base_provider);
+        cfg->_base_provider = 0;
+    }
+      
+    // Load the FIPS provider
+    fips = OSSL_PROVIDER_load(NULL, "fips");
+    if (fips == NULL) {
+        ERR_print_errors_fp(stderr);
+        fprintf(stderr, "Failed to load FIPS provider.\n");
+        exit(EXIT_FAILURE);
+    }
+    printf("FIPS Enabled: %s\n",
+         OSSL_PROVIDER_available(NULL, "fips") == 1  ? "yes" : "no");
+
+    // Enable FIPS
+    int res = EVP_default_properties_enable_fips(NULL, 1);
+    if (res == 0 ) {
+        ERR_print_errors_fp(stderr);
+        fprintf(stderr, "Failed to set default FIPS property.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    cfg->_fips_provider = fips;
+    cfg->_base_provider = base;
+
+    return 1;
+    
+  #else
+    fprintf(stderr, "OpenSSL version is not supported with FIPS mode.");
+    exit(EXIT_FAILURE); // Exit if FIPS mode is requested with unsupported version.
+    return 0;
+  #endif
+
+}
+
+int xq_disable_fips(struct xq_config *cfg) {
+
+    #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+    if (cfg == 0) {
+      return 0;
+    }
+      
+    // Disable FIPS
+    int res = EVP_default_properties_enable_fips(NULL, 0);
+    if (res == 0 ) {
+        ERR_print_errors_fp(stderr);
+        fprintf(stderr, "Failed to set default FIPS property.\n");
+        return 0;
+    }
+
+    // Unload the FIPS provider
+    if (cfg->_fips_provider != 0) {
+        OSSL_PROVIDER_unload(cfg->_fips_provider);
+        cfg->_fips_provider = 0;
+    }
+      
+    // Reload the base provider
+    if (cfg->_base_provider == 0) {
+        cfg->_base_provider = OSSL_PROVIDER_load(NULL, "base");
+        if (cfg->_base_provider == NULL) {
+            ERR_print_errors_fp(stderr);
+            fprintf(stderr, "Failed to load base provider\n");
+            return 0;
+        }
+    }
+    
+    printf("FIPS Enabled: %s\n",
+        OSSL_PROVIDER_available(NULL, "fips") == 1  ? "yes" : "no");
+
+      
+    return 1;
+    #else
+    fprintf(stderr, "OpenSSL version is not FIPS compliant.");
+    return 0;
+    #endif
+}

@@ -29,8 +29,11 @@
 #include <xq/algorithms/otp/otp_decrypt.h>
 #include <xq/algorithms/aes/aes_encrypt.h>
 #include <xq/algorithms/aes/aes_decrypt.h>
-#include <xq/algorithms/nist/nist_encrypt.h>
-#include <xq/algorithms/nist/nist_decrypt.h>
+#include <openssl/opensslv.h>
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+#include <xq/algorithms/fips/fips_encrypt.h>
+#include <xq/algorithms/fips/fips_decrypt.h>
+#endif
 #include <xq/services/sub/combined.h>
 #include <xq/services/sub/delegate.h>
 #include <xq/services/sub/packet.h>

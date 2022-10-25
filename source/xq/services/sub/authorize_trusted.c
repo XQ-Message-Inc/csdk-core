@@ -58,11 +58,12 @@ _Bool xq_svc_authorize_trusted(
     itoa(team_id, tail, 10);
 
     // Next we need to calculate how much space we need for this request.
-    char buf[80] = {0};
+    char buf[90] = {0};
     struct jWriteControl jwc;
     jwOpen(&jwc, buf, sizeof(buf), JW_OBJECT);
     jwObj_string(&jwc, "device", (char*) device_name );
     jwObj_bool(&jwc, "roaming", is_roaming);
+    jwObj_int(&jwc, "ver", 2); // Version 2 (AES-CTR, SHA-256, 14 Rounds)
     jwClose(&jwc);
     
 
@@ -86,7 +87,8 @@ _Bool xq_svc_authorize_trusted(
             memcpy(key, security_key, strlen(security_key));
         }
 
-        if (!xq_aes_decrypt(decoded_base64, decoded_len, key, &result, error)) {
+
+        if (!xq_aes_decrypt(decoded_base64, decoded_len, key, &result, 0, error)) {
             // If the decryption failed, abort immediately.
             free(decoded_base64);
             xq_destroy_payload(&result);

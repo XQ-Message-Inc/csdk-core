@@ -15,15 +15,15 @@
 #include <xq/services/crypto.h>
 #include <xq/algorithms/otp/otp_encrypt.h>
 #include <xq/algorithms/aes/aes_encrypt.h>
-#include <xq/algorithms/nist/nist_encrypt.h>
+#include <xq/algorithms/fips/fips_encrypt.h>
 #include <xq/services/sub/packet.h>
 
-enum algorithm_type xq_algorithm_from_token(const char* token){
-    if (token == 0 || strlen(token) < 2 || token[1] != '.') return Algorithm_OTP;
-    switch(token[0]){
-       case 'X': return Algorithm_OTP;
-       case 'A': return Algorithm_AES;
-       case 'D': return Algorithm_AES_Strong;
+enum algorithm_type algorithm_from_key(const char* key){
+    if (key == 0 || strlen(key) < 2 || key[0] != '.') return Algorithm_OTP;
+    switch(key[1]){
+       case Indicator_OTP: return Algorithm_OTP;
+       case Indicator_AES: return Algorithm_AES;
+       case Indicator_FIPS: return Algorithm_FIPS;
        default: return Algorithm_OTP;
     }
 }
@@ -84,20 +84,67 @@ _Bool xq_get_file_token(struct xq_config *config, const char *in_file_path,
 _Bool xq_encrypt_file(const char *in_file_path, const char *out_file_path,
                       char *token, char *key, struct xq_error_info *error) {
 
-  enum algorithm_type algorithm = xq_algorithm_from_token(token);
+  enum algorithm_type algorithm = algorithm_from_key(key);
+
+  encrypt_file_start_type _start = 0;
+  encrypt_file_step_type _step = 0;
+  encrypt_file_end_type _end = 0;
 
   switch (algorithm) {
-  case Algorithm_OTP: {
-    return xq_otp_encrypt_file(in_file_path, out_file_path, token, key, error);
-  } break;
+  case Algorithm_OTP:
+    _start = xq_otp_encrypt_file_start;
+    _step = xq_otp_encrypt_file_step;
+    _end = xq_otp_encrypt_file_end;
+    break;
+
+  case Algorithm_AES:
+    _start = xq_aes_encrypt_file_start;
+    _step = xq_aes_encrypt_file_step;
+    _end = xq_aes_encrypt_file_end;
+    
+  case Algorithm_FIPS:
+    _start = xq_fips_encrypt_file_start;
+    _step = xq_fips_encrypt_file_step;
+    _end = xq_fips_encrypt_file_end;
+    break;
+
   default:
     if (error) {
       sprintf(error->content, "This algorithm is not currently supported.");
       error->responseCode = -1;
     }
-
     return 0;
   }
+
+  struct xq_file_stream stream_info = {0};
+  stream_info.algorithm = algorithm;
+
+  if (!_start(in_file_path, out_file_path, token, key, &stream_info, error)) {
+    return 0;
+  }
+
+  FILE *in_fp = fopen(in_file_path, "rb");
+  uint8_t out_buffer[OTP_STREAM_CHUNK_SIZE];
+  _Bool has_more = 1;
+  int count_index = 0;
+  long data_index = 0;
+  do {
+    int count_read =
+        fread(out_buffer, sizeof(uint8_t), sizeof(out_buffer), in_fp);
+    has_more = count_read == sizeof(out_buffer);
+    if (count_read > 0) {
+      if (!_step(&stream_info, out_buffer, count_read, error)) {
+        _end(&stream_info, 0);
+        return 0;
+      }
+    }
+  } while (has_more);
+
+  if (!_end(&stream_info, error)) {
+    return 0; // Failed to end file properly
+  }
+
+  return 1; // Encryption OK
 }
 
 _Bool xq_encrypt_file_and_store_token(
@@ -174,19 +221,16 @@ _Bool xq_encrypt_file_and_store_token(
 
   switch (algorithm) {
   case Algorithm_OTP: {
-    success = xq_key_to_hex(&quantum, &key, 'X');
+    success = xq_key_to_hex(&quantum, &key, Indicator_OTP);
   } break;
   case Algorithm_AES: {
-    success = xq_key_to_hex(&quantum, &key, 'A');
+    success = xq_key_to_hex(&quantum, &key, Indicator_AES);
   } break;
-  case Algorithm_AES_Strong: {
-    success = xq_key_to_hex(&quantum, &key, 'D');
+  case Algorithm_FIPS: {
+    success = xq_key_to_hex(&quantum, &key, Indicator_FIPS);
   }
 
   break;
-  case Algorithm_NIST: {
-    success = xq_key_to_hex(&quantum, &key, 'N');
-  } break;
   default:
     break;
   }
@@ -214,29 +258,13 @@ _Bool xq_encrypt_file_and_store_token(
 
   if (!success) {
     xq_destroy_hex_quantum_key(&key);
-    // if (message_token.data) free(message_token.data);
     return 0;
   }
-
-  switch (algorithm) {
-  case Algorithm_OTP:
-    success = xq_otp_encrypt_file(in_file_path, out_file_path,
-                                  (char *)message_token.data, key.data, error);
-    break;
-
-  default:
-    if (error) {
-      sprintf(error->content, "This algorithm is not currently supported.");
-      error->responseCode = -1;
-    }
-    xq_destroy_hex_quantum_key(&key);
-
-    return 0;
-  }
-
+  
+  _Bool res = xq_encrypt_file(in_file_path, out_file_path, (char*)message_token.data, key.data, error);
   xq_destroy_hex_quantum_key(&key);
-
-  return 1;
+  
+  return res;
 }
 
 _Bool xq_encrypt_file_start(struct xq_config *config,  const char *in_file_path, const char *out_file_path,
@@ -246,8 +274,6 @@ _Bool xq_encrypt_file_start(struct xq_config *config,  const char *in_file_path,
                             int hours_to_expiration, _Bool delete_on_read,
                             struct xq_file_stream *stream_info,
                             struct xq_error_info *error) {
-
-
 
     
   //  Determine the number of bits we will actually need to request.
@@ -329,19 +355,16 @@ _Bool xq_encrypt_file_start(struct xq_config *config,  const char *in_file_path,
 
   switch (algorithm) {
   case Algorithm_OTP: {
-    success = xq_key_to_hex(&quantum, &key, 'X');
+    success = xq_key_to_hex(&quantum, &key, Indicator_OTP);
   } break;
   case Algorithm_AES: {
-    success = xq_key_to_hex(&quantum, &key, 'A');
+    success = xq_key_to_hex(&quantum, &key, Indicator_AES);
   } break;
-  case Algorithm_AES_Strong: {
-    success = xq_key_to_hex(&quantum, &key, 'D');
+  case Algorithm_FIPS: {
+    success = xq_key_to_hex(&quantum, &key, Indicator_FIPS);
   }
 
   break;
-  case Algorithm_NIST: {
-    success = xq_key_to_hex(&quantum, &key, 'N');
-  } break;
   default:
     break;
   }
@@ -374,12 +397,25 @@ _Bool xq_encrypt_file_start(struct xq_config *config,  const char *in_file_path,
   }
   
 
+ if (stream_info) stream_info->algorithm = algorithm;
 
   switch (algorithm) {
   case Algorithm_OTP: {
-    return xq_otp_encrypt_file_start(out_file_path, token_data, key.data,
+    return xq_otp_encrypt_file_start(in_file_path,out_file_path, token_data, key.data,
                                      stream_info, error);
   } break;
+  
+  case Algorithm_FIPS:{
+    return xq_fips_encrypt_file_start(in_file_path,out_file_path, token_data, key.data,
+                                     stream_info, error);
+  } break;
+  
+  case Algorithm_AES: {
+    return xq_aes_encrypt_file_start(in_file_path,out_file_path, token_data, key.data,
+                                     stream_info, error);
+  } break;
+  
+  
   default:
     if (error) {
       sprintf(error->content, "This algorithm is not currently supported.");
@@ -395,9 +431,42 @@ _Bool xq_encrypt_file_start(struct xq_config *config,  const char *in_file_path,
 size_t xq_encrypt_file_step(struct xq_file_stream *stream_info, uint8_t *data,
                            size_t data_length, struct xq_error_info *error) {
 
-  return xq_otp_encrypt_file_step(stream_info, data, data_length, error);
+  switch (stream_info->algorithm) {
+  case Algorithm_OTP:
+    return xq_otp_encrypt_file_step(stream_info, data, data_length, error);
+
+  case Algorithm_AES:
+    return xq_aes_encrypt_file_step(stream_info, data, data_length, error);
+    
+  case Algorithm_FIPS:
+    return xq_fips_encrypt_file_step(stream_info, data, data_length, error);
+
+  default:
+    if (error) {
+      sprintf(error->content, "This algorithm is not currently supported.");
+      error->responseCode = -1;
+    }
+    return 0;
+  }
 }
 
 _Bool xq_encrypt_file_end(struct xq_file_stream *stream_info,struct xq_error_info *error) {
-  return xq_otp_encrypt_file_end(stream_info, error);
+
+  switch (stream_info->algorithm) {
+  case Algorithm_OTP:
+    return xq_otp_encrypt_file_end(stream_info, error);
+
+  case Algorithm_AES:
+     return xq_aes_encrypt_file_end(stream_info, error);
+     
+  case Algorithm_FIPS:
+    return xq_fips_encrypt_file_end(stream_info, error);
+
+  default:
+    if (error) {
+      sprintf(error->content, "This algorithm is not currently supported.");
+      error->responseCode = -1;
+    }
+    return 0;
+  }
 }

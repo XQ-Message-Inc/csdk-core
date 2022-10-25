@@ -17,7 +17,7 @@
 #include <xq/services/crypto.h>
 #include <xq/algorithms/otp/otp_decrypt.h>
 #include <xq/algorithms/aes/aes_decrypt.h>
-#include <xq/algorithms/nist/nist_decrypt.h>
+#include <xq/algorithms/fips/fips_decrypt.h>
 
 
 _Bool xq_decrypt_with_token( struct xq_config* config, enum algorithm_type algorithm,  uint8_t* data,  size_t data_len, char* token, struct xq_message_payload* result, struct xq_error_info* error   ) {
@@ -45,10 +45,8 @@ _Bool xq_decrypt_with_key( struct xq_config* config, enum algorithm_type algorit
         
         // If the first character is a period, the next should indicate the algorithm type.
         if (key[0] == '.' ) {
-            // Compatibility and strong AES prefixes
-            if (key[1] == 'A' || key[1] == 'D'  ) algorithm = Algorithm_AES;
-            // NIST prefix
-            else if  (key[1] == 'N') algorithm = Algorithm_NIST;
+            if (key[1] == Indicator_AES ) algorithm = Algorithm_AES;
+            else if (key[1] == Indicator_FIPS) algorithm = Algorithm_FIPS;
             // OTP by default.
             else algorithm = Algorithm_OTP;
         }
@@ -59,20 +57,16 @@ _Bool xq_decrypt_with_key( struct xq_config* config, enum algorithm_type algorit
     switch (algorithm) {
             
         case Algorithm_OTP: {
-            success = xq_otp_decrypt(data, data_len, key, result, error);
+            success = xq_otp_decrypt(data, data_len, key, result,0, error);
         }
         break;
             
         case Algorithm_AES:
-        case Algorithm_AES_Strong:{
-            success = xq_aes_decrypt(data, data_len, key, result, error);
+        case Algorithm_FIPS:{
+            success = xq_aes_decrypt(data, data_len, key, result, 0, error);
         }
         break;
             
-        case Algorithm_NIST: {
-            success = xq_nist_decrypt( NULL , data, data_len, key, result, error);
-        }
-        break;
             
         default: break;
     }
