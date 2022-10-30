@@ -137,7 +137,6 @@ _Bool xq_otp_encrypt_file_start( const char* in_file_path,
     
     if (is_native) {
         fflush(out_fp);
-       // fclose(out_fp);
         stream_info->fp = 0;
     }
     else {
@@ -229,8 +228,9 @@ size_t xq_otp_encrypt_file_step(struct xq_file_stream *stream_info, uint8_t *dat
 
 
 _Bool xq_otp_encrypt_file_end(struct xq_file_stream *stream_info,struct xq_error_info *error) {
-    if (stream_info) {
+    if (stream_info && stream_info->fp > 0) {
         fclose(stream_info->fp);
+        stream_info->fp = 0;
     }
     return 1;
 }

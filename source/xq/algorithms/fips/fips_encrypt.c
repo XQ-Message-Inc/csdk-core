@@ -419,7 +419,7 @@ _Bool xq_fips_encrypt_file_end(struct xq_file_stream *stream_info, struct xq_err
                 }
         }
         
-        else {
+        else if (stream_info->fp > 0) {
             // Seek to the position right after the name index.
             if (fseek(stream_info->fp, stream_info->header_index - sizeof(long), SEEK_SET) == 0) {
                 // Write out the actual (unencrypted) file size.
@@ -431,6 +431,7 @@ _Bool xq_fips_encrypt_file_end(struct xq_file_stream *stream_info, struct xq_err
                 }
             }
             fclose(stream_info->fp);
+            stream_info->fp = 0;
         }
         
         if (stream_info->extra) {
