@@ -249,8 +249,13 @@ _Bool xq_fips_encrypt_file_start(const char* in_file_path,
     }
     
     char filename[512] = {0};
-    if (out_file_path){
+    if (in_file_path){
         if (!xq_get_file_name(in_file_path, filename)) {
+            strcpy(filename, out_file_path);
+        }
+    }
+    else if (out_file_path){
+        if (!xq_get_file_name(out_file_path, filename)) {
             strcpy(filename, out_file_path);
         }
     }
