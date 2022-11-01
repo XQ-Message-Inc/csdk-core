@@ -144,8 +144,8 @@ _Bool xq_encrypt_and_store_token(
 void* xq_create_ctx(enum algorithm_type algorithm, unsigned char *key_data, int key_data_len, uint8_t* salt, struct xq_error_info *error){
     switch (algorithm) {
         case Algorithm_OTP: return xq_otp_create_ctx(key_data, key_data_len, salt, error);
-        case Algorithm_AES:
-        case Algorithm_FIPS: return xq_aes_create_ctx(key_data, key_data_len, salt, error);
+        case Algorithm_AES: return xq_aes_create_ctx(key_data, key_data_len, salt, error);
+        case Algorithm_FIPS: return xq_fips_create_ctx(key_data, key_data_len, salt, error);
         default:
         fprintf(stderr, "Invvalid algorithm - no context available.\n");
     }
@@ -156,8 +156,11 @@ void xq_destroy_ctx(enum algorithm_type algorithm, void* ctx){
     if (ctx == 0) return;
     switch (algorithm) {
         case Algorithm_OTP: xq_otp_destroy_ctx(ctx);
-        case Algorithm_AES:
-        case Algorithm_FIPS: xq_aes_destroy_ctx(ctx);
+        break;
+        case Algorithm_AES: xq_aes_destroy_ctx(ctx);
+        break;
+        case Algorithm_FIPS: xq_fips_destroy_ctx(ctx);
+        break;
         default: break;
     }
 }
