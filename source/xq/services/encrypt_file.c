@@ -43,10 +43,11 @@ _Bool xq_get_file_token(struct xq_config *config, const char *in_file_path,
   }
 
   // 2. Read the length of the file token.
-  uint32_t token_length = 0;
-  int bytes_read = fread(&token_length, sizeof(uint32_t), 1, in_fp);
+  uint32_t token_length = 43;
+  uint32_t token_and_overflow = 0;
+  int bytes_read = fread(&token_and_overflow, sizeof(uint32_t), 1, in_fp);
 
-  if (bytes_read <= 0 || token_length == 0 || token_length != 43) {
+  if (bytes_read <= 0 || token_and_overflow < 43) {
     fclose(in_fp);
     if (error) {
       sprintf(error->content, "Failed to read any token bytes");
@@ -101,6 +102,7 @@ _Bool xq_encrypt_file(const char *in_file_path, const char *out_file_path,
     _start = xq_aes_encrypt_file_start;
     _step = xq_aes_encrypt_file_step;
     _end = xq_aes_encrypt_file_end;
+    break;
     
   case Algorithm_FIPS:
     _start = xq_fips_encrypt_file_start;
@@ -118,6 +120,7 @@ _Bool xq_encrypt_file(const char *in_file_path, const char *out_file_path,
 
   struct xq_file_stream stream_info = {0};
   stream_info.algorithm = algorithm;
+  
 
   if (!_start(in_file_path, out_file_path, token, key, &stream_info, error)) {
     return 0;

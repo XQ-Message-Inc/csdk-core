@@ -307,6 +307,8 @@ int testStreamingFileEncryption(struct user_options *opts,
   long microseconds = end.tv_usec - begin.tv_usec;
   double elapsed = seconds + microseconds * 1e-6;
   printf("Encryption done. Time measured: %.3f seconds.\n\n", elapsed);
+  
+  fprintf(stdout, "Detected real size: %li\n", xq_get_real_file_size(&cfg, output_file, &err));
 
   fprintf(stdout, "Now decrypting, please wait...\n");
 
@@ -354,6 +356,14 @@ int testStreamingFileEncryption(struct user_options *opts,
   microseconds = end.tv_usec - begin.tv_usec;
   elapsed = seconds + microseconds * 1e-6;
   printf("Decryption done. Time measured: %.3f seconds.\n\n", elapsed);
+  
+  FILE *target_fp = fopen(decrypted_file, "rb");
+  fseek(target_fp, 0, SEEK_END);
+  size_t target_size = ftell(target_fp);
+  fclose(target_fp);
+  
+  assert(source_size == target_size);
+  
   
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
   if (algorithm == Algorithm_FIPS)
@@ -453,6 +463,16 @@ int testStaticFileEncryption(struct user_options *opts,
   microseconds = end.tv_usec - begin.tv_usec;
   elapsed = seconds + microseconds * 1e-6;
   printf("Decryption done. Time measured: %.3f seconds.\n\n", elapsed);
+  
+  FILE *target_fp = fopen(decrypted_file, "rb");
+  fseek(target_fp, 0, SEEK_END);
+  size_t target_size = ftell(target_fp);
+  fclose(target_fp);
+  
+  assert(source_size == target_size);
+  
+  // Assert that the resulting file is the same size as the original
+  
   
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
   if (algorithm == Algorithm_FIPS)

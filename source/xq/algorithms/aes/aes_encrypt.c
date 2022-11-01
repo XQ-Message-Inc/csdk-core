@@ -262,20 +262,19 @@ _Bool xq_aes_encrypt_file_start( const char* in_file_path,
     int key_offset =  (key[0] == '.') ? 2 : 0;
     int key_length = ((int)strlen(key)) - key_offset;
 
-    
-    uint32_t token_length = (uint32_t) strlen((const char*)token);
     uint32_t name_length = strlen(filename);
+    uint32_t token_and_extra = TOKEN_LENGTH + 8;
     
     
     // 1. Write the token length and token
-    int written = fwrite(&token_length, sizeof(uint32_t), 1, out_fp);
+    int written = fwrite(&token_and_extra, sizeof(uint32_t), 1, out_fp);
     if (written <= 0) {
         if (error) sprintf( error->content, "Failed to write token length to file");
         fclose(out_fp);
         return 0;
     }
-    written = fwrite(token, sizeof(uint8_t), token_length, out_fp);
-    if (written < token_length) {
+    written = fwrite(token, sizeof(uint8_t), TOKEN_LENGTH, out_fp);
+    if (written < TOKEN_LENGTH) {
         if (error) sprintf( error->content, "Failed to write token to file");
 
         fclose(out_fp);
@@ -307,6 +306,7 @@ _Bool xq_aes_encrypt_file_start( const char* in_file_path,
         fclose(out_fp);
         return 0;
     }
+
     create_salt(enc->salt);
     stream_info->extra = enc;
     
@@ -325,13 +325,12 @@ _Bool xq_aes_encrypt_file_start( const char* in_file_path,
     // Create a 64 bit section for our original file size.
     // We will add the actual value in the end section.
     long sz = 0;
-    fwrite(&sz, 1, sizeof(long), out_fp);
+    //fwrite(&sz, 1, sizeof(long), out_fp);
  
     stream_info->header_index = ftell(out_fp);
     stream_info->data_index = 0;
     stream_info->key = strdup(key + key_offset);
     stream_info->key_length = key_length;
-    stream_info->actual_size = 0;
     if (stream_info->algorithm == 0) stream_info->algorithm = Algorithm_AES;
     
     
@@ -404,7 +403,7 @@ _Bool xq_aes_encrypt_file_start( const char* in_file_path,
 
     } while (has_more);
     
-    stream_info->actual_size += total_read;
+
     stream_info->data_index += total_written;
     
     return total_read;
@@ -413,24 +412,7 @@ _Bool xq_aes_encrypt_file_start( const char* in_file_path,
 _Bool xq_aes_encrypt_file_end(struct xq_file_stream *stream_info, struct xq_error_info *error){
      if (stream_info) {
      
-        if (stream_info->native_handle > 0) {
-            int written = pwrite(stream_info->native_handle, &stream_info->actual_size, sizeof(long), stream_info->header_index - sizeof(long));
-            if (written < sizeof(long)) {
-                    perror("fwrite");
-                }
-        }
-        
-        else if (stream_info->fp > 0) {
-            // Seek to the position right after the name index.
-            if (fseek(stream_info->fp, stream_info->header_index - sizeof(long), SEEK_SET) == 0) {
-                // Write out the actual (unencrypted) file size.
-                long pos = ftell(stream_info->fp);
-            
-                int written = fwrite(&stream_info->actual_size, 1, sizeof(long), stream_info->fp);
-                if (written < sizeof(long)) {
-                    perror("fwrite");
-                }
-            }
+        if (stream_info->fp > 0) {
             fclose(stream_info->fp);
             stream_info->fp = 0;
         }

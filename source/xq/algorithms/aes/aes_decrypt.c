@@ -202,7 +202,7 @@ _Bool xq_aes_decrypt_file_start(
     int key_length = ((int)strlen(key)) - key_offset;
     size_t data_read = 0;
 
-    uint32_t token_length = 0;
+    uint32_t token_and_extra = 0;
     uint32_t name_length = 0;
     stream_info->header_index = 0;
     
@@ -211,14 +211,14 @@ _Bool xq_aes_decrypt_file_start(
     fseek(in_fp, 0, SEEK_SET);
     
     // 1. Skip the token length and token
-    int written = fread(&token_length, sizeof(uint32_t), 1, in_fp);
+    int written = fread(&token_and_extra, sizeof(uint32_t), 1, in_fp);
     if (written <= 0) {
         if (error) sprintf( error->content, "Failed to read token length to file");
         fclose(in_fp);
         return 0;
     }
 
-    fseek(in_fp, token_length, SEEK_CUR);
+    fseek(in_fp, TOKEN_LENGTH, SEEK_CUR);
 
     // 2. Read the name length and OTP encrypted name
     written = fread(&name_length, sizeof(uint32_t), 1, in_fp);
@@ -246,10 +246,10 @@ _Bool xq_aes_decrypt_file_start(
     fprintf(stdout,"DETECTED NAME: %s\n", stream_info->filename );
     
 
-    
     struct fips_dec_data* dec =  malloc(sizeof(struct fips_dec_data));
     
     // Write the 8 byte salt to the file (right after the name)
+
     written = fread(dec->salt, 1, 8, in_fp);
     if (written < 8) {
          if (error) sprintf( error->content, "Failed to read AES information");
@@ -259,11 +259,7 @@ _Bool xq_aes_decrypt_file_start(
     
     fprintf(stdout,"DETECTED SALT: %s\n", dec->salt );
     
-    // Read the file size
-    fread(&stream_info->actual_size, 1,sizeof(long), in_fp);
-    
-    fprintf(stdout, "DETECTED SIZE: %li\n", stream_info->actual_size);
-    
+
     data_index = 0;
     
     

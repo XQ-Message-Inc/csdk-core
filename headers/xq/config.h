@@ -42,6 +42,10 @@
 #define PATH_SEPARATOR '/'
 #endif
 
+#ifndef TOKEN_LENGTH
+#define TOKEN_LENGTH 43
+#endif
+
 #include <stdint.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -80,7 +84,6 @@ struct xq_file_stream {
     char filename[512];
     int native_handle;
     int algorithm;
-    long actual_size;
     void* extra;
     int state;
 };

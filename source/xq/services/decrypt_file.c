@@ -250,19 +250,21 @@ long xq_get_real_file_size(struct xq_config *config, const char *in_file_path,
     return -1;
   }
 
-  // 2. Read the length of the file token.
-  uint32_t token_length = 0, name_length = 0;
-  fread(&token_length, sizeof(uint32_t), 1, in_fp);
-  if (token_length == -1) {
+  // 2. Read the token version of the file token.
+  uint32_t token_and_extra = 0, name_length = 0;
+  fread(&token_and_extra, sizeof(uint32_t), 1, in_fp);
+  if (token_and_extra < TOKEN_LENGTH) {
     fclose(in_fp);
     return -1;
   }
-  fseek(in_fp, token_length, SEEK_CUR);
+  fseek(in_fp, TOKEN_LENGTH, SEEK_CUR);
 
   // Read the length of the filename.
   fread(&name_length, sizeof(uint32_t), 1, in_fp);
+  
 
-  long header_len = (sizeof(uint32_t) * 2) + name_length + token_length;
+  //[VERSION][TOKEN][LENGTH_OF_NAME][NAME][EXTRA][CONTENT]
+  long header_len = (sizeof(uint32_t) * 2) + name_length + token_and_extra;
   fseek(in_fp, 0, SEEK_END);
   long sz = ftell(in_fp) - header_len;
   fclose(in_fp);
