@@ -112,9 +112,10 @@ _Bool xq_fips_decrypt(
     _Bool salted = strncmp( "Salted__", (char*)data, 8) == 0 ;
 
     uint8_t salt[8];
+    const int prefix_offset = 16;
     
     if (salted) {
-        needle += 16;
+        needle += prefix_offset;
         memccpy(salt, data + 8, '\0', 8 );
     }
 
@@ -123,7 +124,7 @@ _Bool xq_fips_decrypt(
     int key_offset =  (key[0] == '.') ? 2 : 0;
     int key_length = ((int)strlen(key)) - key_offset;
     int max_length = data_len;
-    const int prefix_offset = 16;
+    
     
     if ( result->length == 0 ) {
         result->length = prefix_offset + (max_length);
@@ -173,7 +174,7 @@ _Bool xq_fips_decrypt(
     
     else{
         en = (EVP_CIPHER_CTX*) fips_data->ctx;
-         int len = (int) data_len;
+        int len = (int) data_len - prefix_offset;
         success = fips_decrypt(en, needle, len, result->data, &result->length);
     }
 
