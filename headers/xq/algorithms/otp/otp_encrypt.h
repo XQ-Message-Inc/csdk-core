@@ -61,11 +61,11 @@ _Bool xq_otp_encrypt_file_end(struct xq_file_stream *stream_info, struct xq_erro
 /// @param key_data_len The secret key length
 /// @param salt An 8 byte string to use as the salt
 /// @param error An optional, user-provided block  to store details of any error that occurs.
-void* xq_otp_create_ctx(unsigned char *key_data, int key_data_len, uint8_t* salt, struct xq_error_info *error);
+void* xq_otp_create_enc_ctx(unsigned char *key_data, int key_data_len, uint8_t* salt, struct xq_error_info *error);
 
 
 /// Destroy the encryption context
 /// @param ctx The encryption context to destroy
-void xq_otp_destroy_ctx(void* ctx);
+void xq_otp_destroy_enc_ctx(void* ctx);
 
 #endif /* otp_encrypt_h */

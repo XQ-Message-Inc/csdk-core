@@ -95,7 +95,7 @@ _Bool fips_encrypt(EVP_CIPHER_CTX *e, unsigned char *plaintext, int len, uint8_t
   return 1;
 }
 
-void* xq_fips_create_ctx(unsigned char *key_data, int key_data_len, uint8_t* salt, struct xq_error_info *error){
+void* xq_fips_create_enc_ctx(unsigned char *key_data, int key_data_len, uint8_t* salt, struct xq_error_info *error){
     struct fips_enc_data* d = malloc(sizeof(struct fips_enc_data));
     
      d->ctx = EVP_CIPHER_CTX_new();
@@ -125,7 +125,7 @@ static inline void create_salt(uint8_t* salt){
         }
 }
 
-void xq_fips_destroy_ctx(void* ctx){
+void xq_fips_destroy_enc_ctx(void* ctx){
     struct fips_enc_data* d = (struct fips_enc_data*) ctx;
     if (d && d->ctx) {
         EVP_CIPHER_CTX_free(d->ctx);
@@ -427,6 +427,31 @@ _Bool xq_fips_encrypt_file_end(struct xq_file_stream *stream_info, struct xq_err
     return 1;
 }
 
+void* xq_fips_reset_enc_ctx(void* ctx, unsigned char *key_data, int key_data_len,  uint8_t* salt, struct xq_error_info *error) {
+
+    struct fips_enc_data* d = (struct fips_enc_data*) ctx;
+    if (!d) return 0;
+    
+      int i, nrounds = FIPS_ROUNDS;
+
+   
+   unsigned char key[32]={0}, iv[32]={0};
+    int key_offset =  (key_data[0] == '.') ? 2 : 0;
+        int key_length = key_data_len - key_offset;
+  i = EVP_BytesToKey(FIPS_CIPHER, FIPS_HASH(), salt, (unsigned char*)&key_data[key_offset], key_length, nrounds, key, iv);
+  if (i != 32) {
+    printf("Key size is %d bits - should be 256 bits\n", i);
+    return 0;
+  }
+
+    if (!EVP_EncryptInit_ex(d->ctx, NULL, NULL, key, iv)){
+         printf("Key size is %d bits - should be 256 bits\n", i);
+        return 0;
+    }
+    
+    return ctx;
+
+}
 
 
 int xq_enable_fips(struct xq_config *cfg, const char *fips_conf_dir) {

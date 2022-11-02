@@ -372,21 +372,42 @@ void xq_destroy_payload(struct xq_message_payload* obj);
 _Bool xq_base64_payload(struct xq_message_payload* in, struct xq_message_payload* out);
 
 
-/// Create a new context for the specified algorithm.
+/// Create a new encryption context for the specified algorithm.
 /// - Parameters:
 ///   - algorithm: The algorithm to use.
 ///   - key_data: The encryption secret key
 ///   - key_data_len: The secret key length
 ///   - salt: An 8 byte string to use as the salt
 ///   - error: An optional, user-provided block  to store details of any error that occurs.
-void* xq_create_ctx(enum algorithm_type algorithm, unsigned char *key_data, int key_data_len, uint8_t* salt, struct xq_error_info *error);
+void* xq_create_enc_ctx(enum algorithm_type algorithm, unsigned char *key_data, int key_data_len, uint8_t* salt, struct xq_error_info *error);
+
+
+/// Create a new decryption context for the specified algorithm.
+/// - Parameters:
+///   - algorithm: The algorithm to use.
+///   - key_data: The encryption secret key
+///   - key_data_len: The secret key length
+///   - salt: An 8 byte string to use as the salt
+///   - error: An optional, user-provided block  to store details of any error that occurs.
+void* xq_create_dec_ctx(enum algorithm_type algorithm, unsigned char *key_data, int key_data_len, uint8_t* salt, struct xq_error_info *error);
+
+
+void* xq_reset_dec_ctx(enum algorithm_type algorithm,void* ctx, unsigned char *key_data, int key_data_len,  uint8_t* salt,   struct xq_error_info *error);
+
+void* xq_reset_enc_ctx(enum algorithm_type algorithm,void* ctx, unsigned char *key_data, int key_data_len,  uint8_t* salt,   struct xq_error_info *error);
+
+/// Destroy the encryption context
+/// - Parameters:
+///   - algorithm: The algorithm to use.
+///   - ctx: The encryption context to destroy
+void xq_destroy_enc_ctx(enum algorithm_type algorithm, void* ctx);
 
 
 /// Destroy the encryption context
 /// - Parameters:
 ///   - algorithm: The algorithm to use.
 ///   - ctx: The encryption context to destroy
-void xq_destroy_ctx(enum algorithm_type algorithm, void* ctx);
+void xq_destroy_dec_ctx(enum algorithm_type algorithm, void* ctx);
 
 
 /// Typedef for file decryption start method

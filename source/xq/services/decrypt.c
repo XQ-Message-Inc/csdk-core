@@ -74,3 +74,41 @@ _Bool xq_decrypt_with_key( struct xq_config* config, enum algorithm_type algorit
     return success;
     
 }
+
+void* xq_create_dec_ctx(enum algorithm_type algorithm, unsigned char *key_data, int key_data_len, uint8_t* salt, struct xq_error_info *error){
+    switch (algorithm) {
+        case Algorithm_OTP: return 0;
+        case Algorithm_AES: return xq_aes_create_dec_ctx(key_data, key_data_len, salt, error);
+        case Algorithm_FIPS: return xq_fips_create_dec_ctx(key_data, key_data_len, salt, error);
+        default:
+        fprintf(stderr, "Invalid algorithm - no context available.\n");
+    }
+    return 0;
+}
+
+void* xq_reset_dec_ctx(enum algorithm_type algorithm,void* ctx, unsigned char *key_data, int key_data_len,  uint8_t* salt,   struct xq_error_info *error){
+    switch (algorithm) {
+        case Algorithm_OTP: return 0;
+        case Algorithm_AES: return xq_aes_reset_dec_ctx(ctx, key_data, key_data_len, salt, error);
+        case Algorithm_FIPS: return 0;
+        default:
+        fprintf(stderr, "Invalid algorithm - no action available.\n");
+    }
+    return 0;
+}
+
+
+
+void xq_destroy_dec_ctx(enum algorithm_type algorithm, void* ctx){
+    if (ctx == 0) return;
+    switch (algorithm) {
+        case Algorithm_OTP: return;
+        break;
+        case Algorithm_AES: xq_aes_destroy_dec_ctx(ctx);
+        break;
+        case Algorithm_FIPS: xq_fips_destroy_dec_ctx(ctx);
+        break;
+        default:
+        fprintf(stderr, "Invalid algorithm - no action available.\n");
+    }
+}

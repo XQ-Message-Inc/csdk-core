@@ -20,7 +20,7 @@
 #include <xq/algorithms/aes/aes_encrypt.h>
 
 
-struct fips_dec_data {
+struct aes_dec_data {
     uint8_t salt[8];
     EVP_CIPHER_CTX* ctx;
 };
@@ -32,10 +32,9 @@ struct fips_dec_data {
  **/
 int aes_decrypt_init(unsigned char *key_data, int key_data_len, unsigned char *salt, EVP_CIPHER_CTX *e_ctx)
 {
-  int i, nrounds = 14;
-  unsigned char key[32], iv[32];
-  
+  int i, nrounds = AES_ROUNDS;
 
+ unsigned char key[32]={0}, iv[32]={0};
   /*
    * Gen key & IV for AES 256 CBC mode. A SHA1 digest is used to hash the supplied key material.
    * nrounds is the number of times the we hash the material. More rounds are more secure but
@@ -49,13 +48,14 @@ int aes_decrypt_init(unsigned char *key_data, int key_data_len, unsigned char *s
 
   EVP_CIPHER_CTX_init(e_ctx);
   
-  EVP_CIPHER_CTX_set_padding(e_ctx, AES_PADDING);
   
+  EVP_CIPHER_CTX_set_padding(e_ctx, AES_PADDING);
   
   EVP_DecryptInit_ex(e_ctx, AES_CIPHER, NULL, key, iv);
 
   return 0;
 }
+
 
 /*
  * Encrypt *len bytes of data
@@ -69,6 +69,7 @@ _Bool aes_decrypt(EVP_CIPHER_CTX *e, unsigned char *ciphertext, int len, uint8_t
   else if (plaintext_len && *plaintext_len < p_len) {
     fprintf(stderr, "Length of ciphertext %i is less than expected %i\n ", *plaintext_len, p_len);
   }
+  
 
   /* allows reusing of 'e' for multiple encryption cycles */
   if (!EVP_DecryptInit_ex(e, NULL, NULL, NULL, NULL)){
@@ -144,7 +145,7 @@ _Bool xq_aes_decrypt(
     
     _Bool success = 0;
     
-    struct fips_dec_data* aes_data = (struct fips_dec_data* ) ctx;
+    struct aes_dec_data* aes_data = (struct aes_dec_data* ) ctx;
     
     if (!aes_data) {
         // Step 1: Initialize
@@ -154,6 +155,7 @@ _Bool xq_aes_decrypt(
             return 0;
         }
         
+        uint8_t key32[32], iv32[32];
         if (aes_decrypt_init((unsigned char*)&key[key_offset], key_length, salt, en) != 0) {
             ERR_print_errors_fp(stderr);
             return 0;
@@ -245,7 +247,7 @@ _Bool xq_aes_decrypt_file_start(
     fprintf(stdout,"DETECTED NAME: %s\n", stream_info->filename );
     
 
-    struct fips_dec_data* dec =  malloc(sizeof(struct fips_dec_data));
+    struct aes_dec_data* dec =  malloc(sizeof(struct aes_dec_data));
     
     // Write the 8 byte salt to the file (right after the name)
 
@@ -296,7 +298,7 @@ size_t xq_aes_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* da
         return 0;
     }
     
-    struct fips_dec_data* dec =  (struct fips_dec_data*) stream_info->extra;
+    struct aes_dec_data* dec =  (struct aes_dec_data*) stream_info->extra;
     
     EVP_CIPHER_CTX* en = (EVP_CIPHER_CTX*) dec->ctx;
 
@@ -343,7 +345,7 @@ _Bool xq_aes_decrypt_file_end(struct xq_file_stream* stream_info ){
     if (stream_info) {
         fclose(stream_info->fp);
         if (stream_info->extra) {
-            struct fips_dec_data* dec = (struct fips_dec_data*) stream_info->extra;
+            struct aes_dec_data* dec = (struct aes_dec_data*) stream_info->extra;
             EVP_CIPHER_CTX_free(dec->ctx);
             dec->ctx = 0;
         }
@@ -351,5 +353,58 @@ _Bool xq_aes_decrypt_file_end(struct xq_file_stream* stream_info ){
     return 1;
 }
 
+void* xq_aes_create_dec_ctx(unsigned char *key_data, int key_data_len, uint8_t* salt, struct xq_error_info *error){
 
+    struct aes_dec_data* d = malloc(sizeof(struct aes_dec_data));
+    
+     d->ctx = EVP_CIPHER_CTX_new();
+        if (!d->ctx) {
+            ERR_print_errors_fp(stderr);
+            return 0;
+        }
+        
+        int key_offset =  (key_data[0] == '.') ? 2 : 0;
+        int key_length = key_data_len - key_offset;
+        
+        memcpy(d->salt, salt, 8);
+        if (aes_decrypt_init((unsigned char*)&key_data[key_offset], key_length,(unsigned char*) &d->salt, d->ctx) != 0) {
+            ERR_print_errors_fp(stderr);
+            return 0;
+        }
+  
+    return d;
+}
 
+void xq_aes_destroy_dec_ctx(void* ctx){
+    printf("*** DESTROYING AES CONTEXT...\n");
+    struct aes_dec_data* d = (struct aes_dec_data*) ctx;
+    if (d && d->ctx) {
+        EVP_CIPHER_CTX_free(d->ctx);
+        free(d);
+    }
+}
+
+void* xq_aes_reset_dec_ctx(void* ctx, unsigned char *key_data, int key_data_len,  uint8_t* salt, struct xq_error_info *error) {
+
+    struct aes_dec_data* d = (struct aes_dec_data*) ctx;
+    if (!d) return 0;
+    
+      int i, nrounds = AES_ROUNDS;
+
+    unsigned char key[32]={0}, iv[32]={0};
+    int key_offset =  (key_data[0] == '.') ? 2 : 0;
+        int key_length = key_data_len - key_offset;
+  i = EVP_BytesToKey(AES_CIPHER, AES_HASH(), salt, (unsigned char*)&key_data[key_offset], key_length, nrounds, key, iv);
+  if (i != 32) {
+    printf("Key size is %d bits - should be 256 bits\n", i);
+    return 0;
+  }
+
+    if (!EVP_DecryptInit_ex(d->ctx, AES_CIPHER, NULL, key, iv)){
+         printf("Key size is %d bits - should be 256 bits\n", i);
+        return 0;
+    }
+    
+    return d;
+
+}

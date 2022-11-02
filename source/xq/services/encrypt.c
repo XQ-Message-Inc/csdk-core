@@ -141,26 +141,38 @@ _Bool xq_encrypt_and_store_token(
 }
 
 
-void* xq_create_ctx(enum algorithm_type algorithm, unsigned char *key_data, int key_data_len, uint8_t* salt, struct xq_error_info *error){
+void* xq_create_enc_ctx(enum algorithm_type algorithm, unsigned char *key_data, int key_data_len, uint8_t* salt, struct xq_error_info *error){
     switch (algorithm) {
-        case Algorithm_OTP: return xq_otp_create_ctx(key_data, key_data_len, salt, error);
-        case Algorithm_AES: return xq_aes_create_ctx(key_data, key_data_len, salt, error);
-        case Algorithm_FIPS: return xq_fips_create_ctx(key_data, key_data_len, salt, error);
+        case Algorithm_OTP: return xq_otp_create_enc_ctx(key_data, key_data_len, salt, error);
+        case Algorithm_AES: return xq_aes_create_enc_ctx(key_data, key_data_len, salt, error);
+        case Algorithm_FIPS: return xq_fips_create_enc_ctx(key_data, key_data_len, salt, error);
         default:
         fprintf(stderr, "Invalid algorithm - no context available.\n");
     }
     return 0;
 }
 
-void xq_destroy_ctx(enum algorithm_type algorithm, void* ctx){
+void xq_destroy_enc_ctx(enum algorithm_type algorithm, void* ctx){
     if (ctx == 0) return;
     switch (algorithm) {
-        case Algorithm_OTP: xq_otp_destroy_ctx(ctx);
+        case Algorithm_OTP: return;
         break;
-        case Algorithm_AES: xq_aes_destroy_ctx(ctx);
+        case Algorithm_AES: xq_aes_destroy_enc_ctx(ctx);
         break;
-        case Algorithm_FIPS: xq_fips_destroy_ctx(ctx);
+        case Algorithm_FIPS: xq_fips_destroy_enc_ctx(ctx);
         break;
-        default: break;
+        default:
+        fprintf(stderr, "Invalid algorithm - no action available.\n");;
     }
+}
+
+void* xq_reset_enc_ctx(enum algorithm_type algorithm,void* ctx, unsigned char *key_data, int key_data_len,  uint8_t* salt,   struct xq_error_info *error){
+    switch (algorithm) {
+        case Algorithm_OTP: return 0;
+        case Algorithm_AES: return xq_aes_reset_enc_ctx(ctx, key_data, key_data_len, salt, error);
+        case Algorithm_FIPS: return 0;
+        default:
+        fprintf(stderr, "Invalid algorithm - no action available.\n");
+    }
+    return 0;
 }

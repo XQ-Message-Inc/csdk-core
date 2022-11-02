@@ -45,4 +45,11 @@ size_t xq_aes_decrypt_file_step( struct xq_file_stream* stream_info, uint8_t* da
 /// @param error An optional, user-provided block  to store details of any error that occurs.
 _Bool xq_aes_decrypt_file_end(struct xq_file_stream* stream_info,struct xq_error_info *error  );
 
+void* xq_aes_create_dec_ctx(unsigned char *key_data, int key_data_len, uint8_t* salt, struct xq_error_info *error);
+
+void* xq_aes_reset_dec_ctx(void* ctx, unsigned char *key_data, int key_data_len,  uint8_t* salt,   struct xq_error_info *error);
+
+void xq_aes_destroy_dec_ctx(void* ctx);
+
+
 #endif /* aes_decrypt_h */

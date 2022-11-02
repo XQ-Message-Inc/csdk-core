@@ -355,4 +355,32 @@ _Bool xq_fips_decrypt_file_end(struct xq_file_stream* stream_info ){
 }
 
 
+void* xq_fips_create_dec_ctx(unsigned char *key_data, int key_data_len, uint8_t* salt, struct xq_error_info *error){
 
+    struct fips_dec_data* d = malloc(sizeof(struct fips_dec_data));
+    
+     d->ctx = EVP_CIPHER_CTX_new();
+        if (!d->ctx) {
+            ERR_print_errors_fp(stderr);
+            return 0;
+        }
+        
+        int key_offset =  (key_data[0] == '.') ? 2 : 0;
+        int key_length = key_data_len - key_offset;
+        
+        memcpy(d->salt, salt, 8);
+        if (fips_decrypt_init((unsigned char*)&key_data[key_offset], key_length,(unsigned char*) &d->salt, d->ctx) != 0) {
+            ERR_print_errors_fp(stderr);
+            return 0;
+        }
+  
+    return d;
+}
+
+void xq_fips_destroy_dec_ctx(void* ctx){
+    struct fips_dec_data* d = (struct fips_dec_data*) ctx;
+    if (d && d->ctx) {
+        EVP_CIPHER_CTX_free(d->ctx);
+        free(d);
+    }
+}

@@ -605,7 +605,7 @@ int testEncryptionSpeed(struct user_options *opts,
   uint8_t salt[] = {"12345678"};
 
   void *my_context =
-      xq_create_ctx(algorithm, key_data, key_data_len, salt, &err);
+      xq_create_enc_ctx(algorithm, key_data, key_data_len, salt, &err);
 
   uint8_t buffer[sizeof(messageContent) << 1] = {0};
   struct xq_message_payload result = {buffer, sizeof(buffer)};
@@ -638,7 +638,7 @@ int testEncryptionSpeed(struct user_options *opts,
       (double)completed / 1024000.0, elapsed);
 
   // Cleanup
-  xq_destroy_ctx(algorithm, my_context);
+  xq_destroy_enc_ctx(algorithm, my_context);
 
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
   if (algorithm == Algorithm_FIPS)

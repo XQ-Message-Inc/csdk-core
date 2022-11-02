@@ -20,7 +20,7 @@
 #include <openssl/rand.h>
 
 
-struct fips_enc_data {
+struct aes_enc_data {
     uint8_t salt[8];
     EVP_CIPHER_CTX* ctx;
 };
@@ -32,7 +32,7 @@ struct fips_enc_data {
 int aes_encrypt_init(unsigned char *key_data, int key_data_len, unsigned char *salt, EVP_CIPHER_CTX *e_ctx)
 {
   int i, nrounds = 14;
-  unsigned char key[32], iv[32];
+  unsigned char key[32]={0}, iv[32]={0};
 
   
   /*
@@ -63,7 +63,7 @@ _Bool aes_encrypt(EVP_CIPHER_CTX *e, unsigned char *plaintext, int len, uint8_t*
 {
   /* max ciphertext len for a n bytes of plaintext is n + AES_BLOCK_SIZE -1 bytes */
   int c_len = len + AES_BLOCK_SIZE, f_len = 0;
-  if (ciphertext == 0) ciphertext = malloc(c_len);
+  if (ciphertext == 0) ciphertext = calloc(1,c_len);
   else if (ciphertext_len && *ciphertext_len < c_len) {
     fprintf(stderr, "Length of ciphertext %i is less than expected %i\n ", *ciphertext_len, c_len);
   }
@@ -91,8 +91,9 @@ _Bool aes_encrypt(EVP_CIPHER_CTX *e, unsigned char *plaintext, int len, uint8_t*
   return 1;
 }
 
-void* xq_aes_create_ctx(unsigned char *key_data, int key_data_len, uint8_t* salt, struct xq_error_info *error){
-    struct fips_enc_data* d = malloc(sizeof(struct fips_enc_data));
+void* xq_aes_create_enc_ctx(unsigned char *key_data, int key_data_len, uint8_t* salt, struct xq_error_info *error){
+
+    struct aes_enc_data* d = malloc(sizeof(struct aes_enc_data));
     
      d->ctx = EVP_CIPHER_CTX_new();
         if (!d->ctx) {
@@ -121,8 +122,8 @@ static inline void create_salt(uint8_t* salt){
         }
 }
 
-void xq_aes_destroy_ctx(void* ctx){
-    struct fips_enc_data* d = (struct fips_enc_data*) ctx;
+void xq_aes_destroy_enc_ctx(void* ctx){
+    struct aes_enc_data* d = (struct aes_enc_data*) ctx;
     if (d && d->ctx) {
         EVP_CIPHER_CTX_free(d->ctx);
         free(d);
@@ -169,7 +170,7 @@ _Bool xq_aes_encrypt(
     
     _Bool success = 0;
     
-    struct fips_enc_data* aes_data = (struct fips_enc_data* ) ctx;
+    struct aes_enc_data* aes_data = (struct aes_enc_data* ) ctx;
     
     if (!aes_data) {
         // Step 1: Initialize
@@ -187,11 +188,13 @@ _Bool xq_aes_encrypt(
             return 0;
         }
         
+
         // Step 2: Encrypt
         int len = (int) data_len;
         result->length -= prefix_offset;
         success = aes_encrypt(en, data, len, result->data + prefix_offset, &result->length);
         if (success){
+            // printf("enc salt ==> %s\n", salt);
             memccpy(result->data, "Salted__", '\0', 8);
             memccpy(result->data + 8, salt , '\0', 8);
             result->length += prefix_offset;
@@ -207,8 +210,22 @@ _Bool xq_aes_encrypt(
         en = (EVP_CIPHER_CTX*) aes_data->ctx;
          int len = (int) data_len;
         result->length -= prefix_offset;
+        
+        
+        ///////////////////////////
+
+        
+        //////////////////////////////
+        
+        
+        
+        
         success = aes_encrypt(en, data, len, result->data + prefix_offset, &result->length);
         if (success){
+            //printf("enc salt ==> %s\n", aes_data->salt);
+           // uint8_t iv[512] = {0};
+            //EVP_CIPHER_CTX_get_updated_iv(en, iv, sizeof(iv));
+            //printf("enc iv ==> %s\n", iv);
             memccpy(result->data, "Salted__", '\0', 8);
             memccpy(result->data + 8, aes_data->salt , '\0', 8);
             result->length += prefix_offset;
@@ -300,7 +317,7 @@ _Bool xq_aes_encrypt_file_start( const char* in_file_path,
     }
     
     /// START ENCRYPT FILE DATA
-    struct fips_enc_data* enc =  malloc(sizeof(struct fips_enc_data));
+    struct aes_enc_data* enc =  malloc(sizeof(struct aes_enc_data));
     enc->ctx = EVP_CIPHER_CTX_new();
     if (!enc->ctx) {
         ERR_print_errors_fp(stderr);
@@ -356,7 +373,7 @@ _Bool xq_aes_encrypt_file_start( const char* in_file_path,
         return 0;
     }
     
-    struct fips_enc_data* enc =  (struct fips_enc_data*) stream_info->extra;
+    struct aes_enc_data* enc =  (struct aes_enc_data*) stream_info->extra;
     
     EVP_CIPHER_CTX* en = (EVP_CIPHER_CTX*) enc->ctx;
     
@@ -419,7 +436,7 @@ _Bool xq_aes_encrypt_file_end(struct xq_file_stream *stream_info, struct xq_erro
         }
         
         if (stream_info->extra) {
-            struct fips_enc_data* enc = (struct fips_enc_data*) stream_info->extra;
+            struct aes_enc_data* enc = (struct aes_enc_data*) stream_info->extra;
             EVP_CIPHER_CTX_free(enc->ctx);
             enc->ctx = 0;
         }
@@ -427,3 +444,29 @@ _Bool xq_aes_encrypt_file_end(struct xq_file_stream *stream_info, struct xq_erro
     return 1;
 }
 
+
+void* xq_aes_reset_enc_ctx(void* ctx, unsigned char *key_data, int key_data_len,  uint8_t* salt, struct xq_error_info *error) {
+
+    struct aes_enc_data* d = (struct aes_enc_data*) ctx;
+    if (!d) return 0;
+    
+      int i, nrounds = AES_ROUNDS;
+
+   
+   unsigned char key[32]={0}, iv[32]={0};
+    int key_offset =  (key_data[0] == '.') ? 2 : 0;
+        int key_length = key_data_len - key_offset;
+  i = EVP_BytesToKey(AES_CIPHER, AES_HASH(), salt, (unsigned char*)&key_data[key_offset], key_length, nrounds, key, iv);
+  if (i != 32) {
+    printf("Key size is %d bits - should be 256 bits\n", i);
+    return 0;
+  }
+
+    if (!EVP_EncryptInit_ex(d->ctx, NULL, NULL, key, iv)){
+         printf("Key size is %d bits - should be 256 bits\n", i);
+        return 0;
+    }
+    
+    return ctx;
+
+}
