@@ -288,7 +288,7 @@ _Bool xq_fips_decrypt_file_start(
     stream_info->header_index = ftell(in_fp);
     stream_info->data_size -= stream_info->header_index;
     stream_info->extra = dec;
-    if (stream_info->algorithm == 0) stream_info->algorithm = Algorithm_AES;
+    if (stream_info->algorithm == 0) stream_info->algorithm = Algorithm_FIPS;
     
     return 1;
     

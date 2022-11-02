@@ -147,7 +147,7 @@ void* xq_create_ctx(enum algorithm_type algorithm, unsigned char *key_data, int 
         case Algorithm_AES: return xq_aes_create_ctx(key_data, key_data_len, salt, error);
         case Algorithm_FIPS: return xq_fips_create_ctx(key_data, key_data_len, salt, error);
         default:
-        fprintf(stderr, "Invvalid algorithm - no context available.\n");
+        fprintf(stderr, "Invalid algorithm - no context available.\n");
     }
     return 0;
 }

@@ -9,7 +9,6 @@
 #define encrypt_h
 
 
-
 enum algorithm_type {
     /// This should only be used during a decryption phase. Automatically decide which algorithm to used based on its key prefix.
     Algorithm_Autodetect = 0,
@@ -21,7 +20,7 @@ enum algorithm_type {
     Algorithm_FIPS = 3,
 };
 
-enum algorithm_type_indicator : uint8_t {
+enum algorithm_type_indicator {
     Indicator_OTP = 'X',
     Indicator_AES = 'A',
     Indicator_FIPS = 'F'

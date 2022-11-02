@@ -107,7 +107,8 @@ void* xq_fips_create_ctx(unsigned char *key_data, int key_data_len, uint8_t* sal
         int key_offset =  (key_data[0] == '.') ? 2 : 0;
         int key_length = key_data_len - key_offset;
         
-        RAND_bytes(salt, 8);
+        if (salt) memcpy(d->salt, salt, 8);
+        else RAND_bytes(d->salt, 8);
         if (fips_encrypt_init((unsigned char*)&key_data[key_offset], key_length,(unsigned char*) &d->salt, d->ctx) != 0) {
             ERR_print_errors_fp(stderr);
             return 0;

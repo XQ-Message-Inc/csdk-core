@@ -719,6 +719,11 @@ int main(int argc, const char *argv[]) {
                 realloc(opts.algorithms,
                         sizeof(enum algorithm_type) * ++opts.algorithm_count);
             opts.algorithms[opts.algorithm_count - 1] = Algorithm_AES;
+          } else if (strcmp(v, "FIPS") == 0) {
+            opts.algorithms =
+                realloc(opts.algorithms,
+                        sizeof(enum algorithm_type) * ++opts.algorithm_count);
+            opts.algorithms[opts.algorithm_count - 1] = Algorithm_FIPS;
           } else {
             destroy_user_options(&opts);
             fprintf(stderr, "An invalid algorithm was specified (%s).\n", v);
