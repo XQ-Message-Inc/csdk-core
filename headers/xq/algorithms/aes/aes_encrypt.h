@@ -100,4 +100,17 @@ void xq_aes_destroy_enc_ctx(void* ctx);
 void* xq_aes_reset_enc_ctx(void* ctx, unsigned char *key_data, int key_data_len,  uint8_t* salt,   struct xq_error_info *error);
 
 
+/// Enable FIPS mode.
+/// @param cfg The configuration object
+/// @param fips_conf_dir OptionConfiguration
+int xq_enable_fips(struct xq_config *cfg, const char* fips_conf_dir);
+
+/// Disable fips mode.
+///
+/// Disable fips mode.
+/// @param cfg The configuration object
+int xq_disable_fips(struct xq_config *cfg);
+
+
+
 #endif /* aes_encrypt_h */

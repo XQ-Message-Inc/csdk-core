@@ -16,7 +16,6 @@
 #include <ext/base64/base64.h>
 #include <xq/algorithms/otp/otp_encrypt.h>
 #include <xq/algorithms/aes/aes_encrypt.h>
-#include <xq/algorithms/fips/fips_encrypt.h>
 
 
 static int rand_int(int n) {
@@ -177,7 +176,6 @@ _Bool xq_encrypt_with_key( enum algorithm_type algorithm,
   switch(algorithm) {
     case Algorithm_OTP: return xq_otp_encrypt(data, data_len, key, result, context, error);
     case Algorithm_AES: return xq_aes_encrypt(data, data_len, key, result, context, error);
-    case Algorithm_FIPS: return xq_fips_encrypt(data, data_len, key, result, context, error);
     default:
     fprintf(stderr, "Algorithm not implemented.\n");
     return 0;

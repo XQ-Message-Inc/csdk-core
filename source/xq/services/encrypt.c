@@ -15,7 +15,6 @@
 #include <xq/services/crypto.h>
 #include <xq/algorithms/otp/otp_encrypt.h>
 #include <xq/algorithms/aes/aes_encrypt.h>
-#include <xq/algorithms/fips/fips_encrypt.h>
 #include <xq/services/sub/packet.h>
 
 
@@ -74,10 +73,6 @@ _Bool xq_encrypt(
             success = xq_aes_encrypt( data,  data_len, key.data, result, 0, error);
         }
         break;
-        case Algorithm_FIPS: {
-            xq_key_to_hex(&quantum, &key, Indicator_FIPS);
-            success = xq_aes_encrypt( data,  data_len, key.data, result, 0, error);
-        }
             
         break;
         default: break;
@@ -144,8 +139,8 @@ _Bool xq_encrypt_and_store_token(
 void* xq_create_enc_ctx(enum algorithm_type algorithm, unsigned char *key_data, int key_data_len, uint8_t* salt, struct xq_error_info *error){
     switch (algorithm) {
         case Algorithm_OTP: return xq_otp_create_enc_ctx(key_data, key_data_len, salt, error);
-        case Algorithm_AES: return xq_aes_create_enc_ctx(key_data, key_data_len, salt, error);
-        case Algorithm_FIPS: return xq_fips_create_enc_ctx(key_data, key_data_len, salt, error);
+        case Algorithm_AES:
+        return xq_aes_create_enc_ctx(key_data, key_data_len, salt, error);
         default:
         fprintf(stderr, "Invalid algorithm - no context available.\n");
     }
@@ -157,9 +152,8 @@ void xq_destroy_enc_ctx(enum algorithm_type algorithm, void* ctx){
     switch (algorithm) {
         case Algorithm_OTP: return;
         break;
-        case Algorithm_AES: xq_aes_destroy_enc_ctx(ctx);
-        break;
-        case Algorithm_FIPS: xq_fips_destroy_enc_ctx(ctx);
+        case Algorithm_AES:
+         xq_aes_destroy_enc_ctx(ctx);
         break;
         default:
         fprintf(stderr, "Invalid algorithm - no action available.\n");;
@@ -169,8 +163,8 @@ void xq_destroy_enc_ctx(enum algorithm_type algorithm, void* ctx){
 void* xq_reset_enc_ctx(enum algorithm_type algorithm,void* ctx, unsigned char *key_data, int key_data_len,  uint8_t* salt,   struct xq_error_info *error){
     switch (algorithm) {
         case Algorithm_OTP: return 0;
-        case Algorithm_AES: return xq_aes_reset_enc_ctx(ctx, key_data, key_data_len, salt, error);
-        case Algorithm_FIPS: return 0;
+        case Algorithm_AES:
+         return xq_aes_reset_enc_ctx(ctx, key_data, key_data_len, salt, error);
         default:
         fprintf(stderr, "Invalid algorithm - no action available.\n");
     }

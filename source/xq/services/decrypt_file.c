@@ -16,7 +16,6 @@
 #include <xq/services/crypto.h>
 #include <xq/algorithms/otp/otp_decrypt.h>
 #include <xq/algorithms/aes/aes_decrypt.h>
-#include <xq/algorithms/fips/fips_decrypt.h>
 #include <string.h>
 
 #define STREAM_CHUNK_SIZE 8192
@@ -65,11 +64,6 @@ _Bool xq_decrypt_file(struct xq_config *config, const char *in_file_path,
     _end = xq_aes_decrypt_file_end;
     break;
     
-  case Algorithm_FIPS:
-    _start = xq_fips_decrypt_file_start;
-    _step = xq_fips_decrypt_file_step;
-    _end = xq_fips_decrypt_file_end;
-    break;
 
   default:
     if (error) {
@@ -183,10 +177,6 @@ _Bool xq_decrypt_file_start(struct xq_config *config, const char *in_file_path,
                                      error);
     break;
     
-  case Algorithm_FIPS:
-    return xq_fips_decrypt_file_start(key.data, in_file_path, stream_info,
-                                     error);
-    break;
 
   default:
     if (error) {
@@ -208,8 +198,6 @@ size_t xq_decrypt_file_step(struct xq_file_stream *stream_info, uint8_t *data,
   case Algorithm_AES:
     return xq_aes_decrypt_file_step(stream_info, data, data_length, error);
     
-  case Algorithm_FIPS:
-    return xq_fips_decrypt_file_step(stream_info, data, data_length, error);
   default:
     if (error) {
       sprintf(error->content, "This algorithm is not currently supported.");
@@ -227,8 +215,6 @@ _Bool xq_decrypt_file_end(struct xq_file_stream *stream_info,
     return xq_otp_decrypt_file_end(stream_info, error);
   case Algorithm_AES:
     return xq_aes_decrypt_file_end(stream_info, error);
-  case Algorithm_FIPS:
-    return xq_fips_decrypt_file_end(stream_info, error);
   default:
     if (error) {
       sprintf(error->content, "This algorithm is not currently supported.");

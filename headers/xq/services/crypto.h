@@ -16,14 +16,11 @@ enum algorithm_type {
     Algorithm_OTP = 1,
     /// Advanced Encryption Standard (AES)
     Algorithm_AES = 2,
-    /// 5-Pass Advanced Encryption Standard (AES) with SHA-2 key encoding.
-    Algorithm_FIPS = 3,
 };
 
 enum algorithm_type_indicator {
     Indicator_OTP = 'X',
-    Indicator_AES = 'A',
-    Indicator_FIPS = 'F'
+    Indicator_AES = 'A'
 };
 
 
@@ -33,7 +30,6 @@ static inline const char* algorithm_to_string(enum algorithm_type algorithm) {
     switch (algorithm) {
         case Algorithm_OTP: return "OTP";
         case Algorithm_AES: return "AES";
-        case Algorithm_FIPS: return "FIPS";
         default: return "Unknown";
     }
 }
@@ -44,7 +40,6 @@ static inline _Bool is_valid_algorithm(int algo) {
     switch ( algo ) {
         case Algorithm_OTP:
         case Algorithm_AES:
-        case Algorithm_FIPS:
             return 1;
         default:
             return 0;

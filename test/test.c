@@ -27,7 +27,8 @@ struct user_options {
   int algorithm_count;
   char *target_file;
   char *testing_dir;
-  long fileKbs;
+  long file_kbps;
+  _Bool fips_enabled;
 };
 
 /// Create a zero'ed out user options object.
@@ -210,7 +211,7 @@ int testStreamingFileEncryption(struct user_options *opts,
 
   // Enable FIPS if required.
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
-  if (algorithm == Algorithm_FIPS)
+  if (opts->fips_enabled && algorithm == Algorithm_AES)
     xq_enable_fips(&cfg, NULL);
 #endif
 
@@ -366,7 +367,7 @@ int testStreamingFileEncryption(struct user_options *opts,
   
   
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
-  if (algorithm == Algorithm_FIPS)
+  if (opts->fips_enabled && algorithm == Algorithm_AES)
     xq_disable_fips(&cfg);
 #endif
 
@@ -388,7 +389,7 @@ int testStaticFileEncryption(struct user_options *opts,
 
   // Enable FIPS if required.
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
-  if (algorithm == Algorithm_FIPS)
+  if (algorithm == Algorithm_AES)
     xq_enable_fips(&cfg, NULL);
 #endif
 
@@ -475,7 +476,7 @@ int testStaticFileEncryption(struct user_options *opts,
   
   
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
-  if (algorithm == Algorithm_FIPS)
+  if (opts->fips_enabled && algorithm == Algorithm_AES)
     xq_disable_fips(&cfg);
 #endif
 
@@ -497,7 +498,7 @@ int testDataEncryption(struct user_options *opts,
 
   // Enable FIPS if required.
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
-  if (algorithm == Algorithm_FIPS)
+  if (opts->fips_enabled && algorithm == Algorithm_AES)
     xq_enable_fips(&cfg, NULL);
 #endif
 
@@ -549,7 +550,7 @@ int testDataEncryption(struct user_options *opts,
   xq_destroy_config(&cfg);
 
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
-  if (algorithm == Algorithm_FIPS)
+  if (opts->fips_enabled && algorithm == Algorithm_AES)
     xq_disable_fips(&cfg);
 #endif
 
@@ -591,12 +592,12 @@ int testEncryptionSpeed(struct user_options *opts,
 
   // Enable FIPS if required.
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
-  if (algorithm == Algorithm_FIPS)
+  if (opts->fips_enabled && algorithm == Algorithm_AES)
     xq_enable_fips(&cfg, NULL);
 #endif
 
   // 32 byte message
-  printf("Encrypting message (%i bytes, %li rounds)...\n", (int)sizeof(messageContent), opts->fileKbs);
+  printf("Encrypting message (%i bytes, %li rounds)...\n", (int)sizeof(messageContent), opts->file_kbps);
   _Bool res;
 
   // Create context.
@@ -616,9 +617,9 @@ int testEncryptionSpeed(struct user_options *opts,
   gettimeofday(&begin, 0);
 
   int x = 0;
-  long completed = sizeof(messageContent) * opts->fileKbs;
+  long completed = sizeof(messageContent) * opts->file_kbps;
   // Attempt to encrypt 100MB
-  for (x = 0; x < opts->fileKbs; ++x) {
+  for (x = 0; x < opts->file_kbps; ++x) {
     result.length = sizeof(buffer);
     res = xq_encrypt_with_key(algorithm, (uint8_t *)messageContent,
                                     sizeof(messageContent), (char *)key_data,
@@ -641,7 +642,7 @@ int testEncryptionSpeed(struct user_options *opts,
   xq_destroy_enc_ctx(algorithm, my_context);
 
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
-  if (algorithm == Algorithm_FIPS)
+  if (opts->fips_enabled && algorithm == Algorithm_AES)
     xq_disable_fips(&cfg);
 #endif
 
@@ -662,7 +663,7 @@ int main(int argc, const char *argv[]) {
   struct user_options opts = create_user_options();
 
   // Number of 1024 blocks for testing encryption speed ( 1000000 = 1GB )
-  opts.fileKbs = 1000000;
+  opts.file_kbps = 1000000;
 
   char tokenized_content[255] = {0};
   // Read the program options
@@ -679,7 +680,7 @@ int main(int argc, const char *argv[]) {
       } else if (strncmp(argv[i], "-u", 2) == 0) {
         opts.user_email = strdup(argv[value_idx]);
       } else if (strncmp(argv[i], "-s", 2) == 0) {
-        opts.fileKbs = strtol(argv[value_idx], NULL, 10);
+        opts.file_kbps = strtol(argv[value_idx], NULL, 10);
       } else if (strncmp(argv[i], "-t", 2) == 0) {
 
         char *tokenized_string = strdup(argv[value_idx]);
@@ -703,7 +704,8 @@ int main(int argc, const char *argv[]) {
             opts.algorithms =
                 realloc(opts.algorithms,
                         sizeof(enum algorithm_type) * ++opts.algorithm_count);
-            opts.algorithms[opts.algorithm_count - 1] = Algorithm_FIPS;
+            opts.algorithms[opts.algorithm_count - 1] = Algorithm_AES;
+            opts.fips_enabled = 1;
         #else
             destroy_user_options(&opts);
             fprintf(stderr, "OpenSSL 3.0 or above is required for FIPS testing.\n");
@@ -719,11 +721,6 @@ int main(int argc, const char *argv[]) {
                 realloc(opts.algorithms,
                         sizeof(enum algorithm_type) * ++opts.algorithm_count);
             opts.algorithms[opts.algorithm_count - 1] = Algorithm_AES;
-          } else if (strcmp(v, "FIPS") == 0) {
-            opts.algorithms =
-                realloc(opts.algorithms,
-                        sizeof(enum algorithm_type) * ++opts.algorithm_count);
-            opts.algorithms[opts.algorithm_count - 1] = Algorithm_FIPS;
           } else {
             destroy_user_options(&opts);
             fprintf(stderr, "An invalid algorithm was specified (%s).\n", v);

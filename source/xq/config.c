@@ -30,6 +30,7 @@ char *xq_escape(char *str) {
 }
 
 char *xq_strcat(char *tail, char *src, int max_buf) {
+  if (tail == 0) return tail;
   if (max_buf == 0) {
     while (*tail)
       tail++;

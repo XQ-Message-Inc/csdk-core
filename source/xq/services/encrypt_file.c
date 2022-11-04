@@ -15,7 +15,6 @@
 #include <xq/services/crypto.h>
 #include <xq/algorithms/otp/otp_encrypt.h>
 #include <xq/algorithms/aes/aes_encrypt.h>
-#include <xq/algorithms/fips/fips_encrypt.h>
 #include <xq/services/sub/packet.h>
 
 enum algorithm_type algorithm_from_key(const char* key){
@@ -23,7 +22,6 @@ enum algorithm_type algorithm_from_key(const char* key){
     switch(key[1]){
        case Indicator_OTP: return Algorithm_OTP;
        case Indicator_AES: return Algorithm_AES;
-       case Indicator_FIPS: return Algorithm_FIPS;
        default: return Algorithm_OTP;
     }
 }
@@ -104,12 +102,6 @@ _Bool xq_encrypt_file(const char *in_file_path, const char *out_file_path,
     _end = xq_aes_encrypt_file_end;
     break;
     
-  case Algorithm_FIPS:
-    _start = xq_fips_encrypt_file_start;
-    _step = xq_fips_encrypt_file_step;
-    _end = xq_fips_encrypt_file_end;
-    break;
-
   default:
     if (error) {
       sprintf(error->content, "This algorithm is not currently supported.");
@@ -229,10 +221,7 @@ _Bool xq_encrypt_file_and_store_token(
   case Algorithm_AES: {
     success = xq_key_to_hex(&quantum, &key, Indicator_AES);
   } break;
-  case Algorithm_FIPS: {
-    success = xq_key_to_hex(&quantum, &key, Indicator_FIPS);
-  }
-
+  
   break;
   default:
     break;
@@ -363,9 +352,6 @@ _Bool xq_encrypt_file_start(struct xq_config *config,  const char *in_file_path,
   case Algorithm_AES: {
     success = xq_key_to_hex(&quantum, &key, Indicator_AES);
   } break;
-  case Algorithm_FIPS: {
-    success = xq_key_to_hex(&quantum, &key, Indicator_FIPS);
-  }
 
   break;
   default:
@@ -408,11 +394,6 @@ _Bool xq_encrypt_file_start(struct xq_config *config,  const char *in_file_path,
                                      stream_info, error);
   } break;
   
-  case Algorithm_FIPS:{
-    return xq_fips_encrypt_file_start(in_file_path,out_file_path, token_data, key.data,
-                                     stream_info, error);
-  } break;
-  
   case Algorithm_AES: {
     return xq_aes_encrypt_file_start(in_file_path,out_file_path, token_data, key.data,
                                      stream_info, error);
@@ -441,9 +422,6 @@ size_t xq_encrypt_file_step(struct xq_file_stream *stream_info, uint8_t *data,
   case Algorithm_AES:
     return xq_aes_encrypt_file_step(stream_info, data, data_length, error);
     
-  case Algorithm_FIPS:
-    return xq_fips_encrypt_file_step(stream_info, data, data_length, error);
-
   default:
     if (error) {
       sprintf(error->content, "This algorithm is not currently supported.");
@@ -462,9 +440,6 @@ _Bool xq_encrypt_file_end(struct xq_file_stream *stream_info,struct xq_error_inf
   case Algorithm_AES:
      return xq_aes_encrypt_file_end(stream_info, error);
      
-  case Algorithm_FIPS:
-    return xq_fips_encrypt_file_end(stream_info, error);
-
   default:
     if (error) {
       sprintf(error->content, "This algorithm is not currently supported.");
