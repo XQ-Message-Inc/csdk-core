@@ -235,12 +235,10 @@ _Bool xq_aes_encrypt_file_start( const char* in_file_path,
     _Bool is_native = stream_info && stream_info->native_handle;
     
     if (is_native) {
-        out_fp = fdopen(stream_info->native_handle, "rb+");
+        out_fp = fdopen(stream_info->native_handle, "wb");
     }
     else if (out_file_path){
         out_fp = fopen(out_file_path, "wb");
-        fclose(out_fp);
-        out_fp = fopen(out_file_path, "rb+");
         if (!out_fp) {
             if (error) {
                 sprintf(error->content, "Output file %s fould not be opened", out_file_path );
